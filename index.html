@@ -243,9 +243,18 @@ const datePicker=document.getElementById("datePicker");
 datePicker.max=todayKey();
 datePicker.value=selectedDate;
 
-datePicker.onchange=()=>{
-  selectedDate=datePicker.value;
-  undoStack=[];
+datePicker.onchange = () => {
+  const picked = datePicker.value;
+  const today = todayKey();
+
+  // 🚫 Block future dates (hard stop)
+  if (picked > today) {
+    datePicker.value = selectedDate; // revert
+    return;
+  }
+
+  selectedDate = picked;
+  undoStack = [];
   render();
 };
 
@@ -307,6 +316,7 @@ if(user) boot();
 
 </body>
 </html>
+
 
 
 
