@@ -1,102 +1,246 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>2026 Push-Up Challenge</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>2026 Push-Up Challenge</title>
+
+<style>
+:root{
+  --bg:#0b0f14;
+  --card:#121926;
+  --text:#eaf0ff;
+  --muted:#9aa7bd;
+  --accent:#5eead4;
+  --border:#22304a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  background: var(--bg);
+  color:var(--text);
+}
+header{
+  padding:14px 16px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  font-weight:800;
+}
+.container{
+  max-width:720px;
+  margin:20px auto;
+  padding:0 14px;
+}
+.card{
+  background:var(--card);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:16px;
+}
+h1,h2,h3{margin:0 0 10px}
+.muted{color:var(--muted);font-size:13px}
+.row{display:flex;gap:10px;align-items:center;margin-top:10px}
+.space{justify-content:space-between}
+button{
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);
+  background:#1b2436;
+  color:var(--text);
+  font-weight:800;
+  cursor:pointer;
+}
+button:active{transform:scale(.97)}
+input{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.1);
+  background:#0f1625;
+  color:var(--text);
+}
+.big{
+  font-size:56px;
+  font-weight:900;
+  text-align:center;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+}
+@media(max-width:600px){
+  .grid{grid-template-columns:repeat(3,1fr)}
+}
+.lb{
+  display:flex;
+  justify-content:space-between;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  margin-top:8px;
+}
+.hidden{display:none}
+</style>
 </head>
+
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="logo">💪</div>
-      <div>
-        <div class="title">2026 Push-Up Challenge</div>
-        <div class="subtitle" id="subtitle">Month × Day</div>
-      </div>
+
+<header>💪 2026 Push-Up Challenge</header>
+
+<div class="container">
+
+<!-- LOGIN -->
+<div class="card" id="login">
+  <h2>Enter PIN</h2>
+  <input id="pin" type="password" placeholder="Shared PIN" />
+  <div id="users" class="row hidden">
+    <button data-user="Michael">Michael</button>
+    <button data-user="Dad">Dad</button>
+    <button data-user="Brother">Brother</button>
+  </div>
+  <div class="muted" id="loginError"></div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<div class="card">
+  <div class="row space">
+    <div>
+      <h2 id="today"></h2>
+      <div class="muted" id="goal"></div>
     </div>
-    <div class="top-actions">
-      <button class="btn ghost" id="btnInstall" hidden>Install</button>
-      <button class="btn ghost" id="btnSignOut" hidden>Sign out</button>
-    </div>
-  </header>
+    <div id="streak"></div>
+  </div>
 
-  <main class="container">
-    <!-- AUTH -->
-    <section class="card" id="authCard">
-      <h2>Sign in</h2>
-      <p class="muted">Use your email/password. (We’ll create accounts for you, Dad, and Brother.)</p>
+  <div class="big" id="count">0</div>
+  <div class="muted" id="progress"></div>
 
-      <div class="grid2">
-        <label>
-          Email
-          <input id="email" type="email" placeholder="you@email.com" />
-        </label>
-        <label>
-          Password
-          <input id="password" type="password" placeholder="••••••••" />
-        </label>
-      </div>
+  <div class="grid">
+    <button onclick="add(1)">+1</button>
+    <button onclick="add(5)">+5</button>
+    <button onclick="add(10)">+10</button>
+    <button onclick="add(20)">+20</button>
+    <button onclick="add(50)">+50</button>
+  </div>
 
-      <div class="row">
-        <button class="btn" id="btnSignIn">Sign in</button>
-        <button class="btn secondary" id="btnSignUp">Create account</button>
-      </div>
+  <div class="row">
+    <button onclick="undo()">Undo</button>
+    <button onclick="finish()">Done ✅</button>
+  </div>
+</div>
 
-      <div class="error" id="authError" hidden></div>
-    </section>
+<div class="card">
+  <h3>Leaderboard (Today)</h3>
+  <div id="leaderboard"></div>
+</div>
 
-    <!-- APP -->
-    <section class="card" id="appCard" hidden>
-      <div class="row space">
-        <div>
-          <div class="h1" id="todayLabel">Today</div>
-          <div class="muted" id="goalLabel">Goal: --</div>
-        </div>
-        <div class="pill" id="streakPill">🔥 Streak: --</div>
-      </div>
+</div>
+</div>
 
-      <div class="progressWrap">
-        <div class="bigCount" id="countLabel">0</div>
-        <div class="muted" id="countSub">Completed: 0 / 0</div>
-      </div>
+<script>
+/* ================= CONFIG ================= */
+const PIN = "2026";
+const USERS = ["Michael","Dad","Brother"];
 
-      <div class="tapGrid">
-        <button class="tap" data-add="1">+1</button>
-        <button class="tap" data-add="5">+5</button>
-        <button class="tap" data-add="10">+10</button>
-        <button class="tap" data-add="20">+20</button>
-        <button class="tap" data-add="50">+50</button>
-      </div>
+/* ================= STATE ================= */
+let user = localStorage.getItem("user");
+let todayKey = new Date().toISOString().slice(0,10);
+let data = JSON.parse(localStorage.getItem("pushupData")||"{}");
+let undoStack = [];
 
-      <div class="row">
-        <button class="btn secondary" id="btnUndo">Undo</button>
-        <button class="btn" id="btnDone">Done for today ✅</button>
-      </div>
+/* ================= HELPERS ================= */
+function goalForToday(){
+  let d=new Date();
+  return (d.getMonth()+1)*d.getDate();
+}
+function save(){
+  localStorage.setItem("pushupData",JSON.stringify(data));
+}
+function getLog(u){
+  data[u]=data[u]||{};
+  data[u][todayKey]=data[u][todayKey]||{count:0,done:false};
+  return data[u][todayKey];
+}
+function streak(u){
+  let s=0;
+  for(let i=0;i<400;i++){
+    let d=new Date();d.setDate(d.getDate()-i);
+    let k=d.toISOString().slice(0,10);
+    if(data[u]&&data[u][k]&&data[u][k].done) s++;
+    else break;
+  }
+  return s;
+}
 
-      <hr class="sep" />
+/* ================= LOGIN ================= */
+const pinInput=document.getElementById("pin");
+const usersDiv=document.getElementById("users");
+pinInput.oninput=()=>{
+  usersDiv.classList.toggle("hidden",pinInput.value!==PIN);
+};
+usersDiv.querySelectorAll("button").forEach(b=>{
+  b.onclick=()=>{
+    user=b.dataset.user;
+    localStorage.setItem("user",user);
+    boot();
+  };
+});
 
-      <div class="row space">
-        <h3>Leaderboard</h3>
-        <div class="muted" id="leaderboardDateLabel"></div>
-      </div>
+/* ================= APP ================= */
+function boot(){
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
 
-      <div class="leaderboard" id="leaderboard"></div>
+  const d=new Date();
+  document.getElementById("today").innerText=d.toDateString();
+  document.getElementById("goal").innerText=`Goal: ${goalForToday()} pushups`;
+  render();
+}
 
-      <hr class="sep" />
+function render(){
+  let log=getLog(user);
+  document.getElementById("count").innerText=log.count;
+  document.getElementById("progress").innerText=
+    `${log.count} / ${goalForToday()}`;
+  document.getElementById("streak").innerText=
+    `🔥 Streak: ${streak(user)}`;
 
-      <div class="row space">
-        <h3>Your 2026 totals</h3>
-        <div class="muted" id="ytdLabel">--</div>
-      </div>
-    </section>
-  </main>
+  let lb=document.getElementById("leaderboard");
+  lb.innerHTML="";
+  USERS.forEach(u=>{
+    let c=(data[u]&&data[u][todayKey])?data[u][todayKey].count:0;
+    let div=document.createElement("div");
+    div.className="lb";
+    div.innerHTML=`<strong>${u}</strong><span>${c}/${goalForToday()}</span>`;
+    lb.appendChild(div);
+  });
+  save();
+}
 
-  <footer class="footer muted">
-    Tip: Add to Home Screen for a true app feel.
-  </footer>
+function add(n){
+  let log=getLog(user);
+  log.count+=n;
+  undoStack.push(n);
+  render();
+}
+function undo(){
+  let n=undoStack.pop();
+  if(!n)return;
+  getLog(user).count-=n;
+  render();
+}
+function finish(){
+  let log=getLog(user);
+  if(log.count>=goalForToday()) log.done=true;
+  render();
+}
 
-  <script type="module" src="app.js"></script>
+/* ================= AUTO LOGIN ================= */
+if(user) boot();
+</script>
+
 </body>
 </html>
