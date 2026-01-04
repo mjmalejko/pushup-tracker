@@ -11,14 +11,12 @@
   --card:#121926;
   --text:#eaf0ff;
   --muted:#9aa7bd;
-  --accent:#5eead4;
-  --border:#22304a;
 }
 *{box-sizing:border-box}
 body{
   margin:0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  background: var(--bg);
+  background:var(--bg);
   color:var(--text);
 }
 header{
@@ -38,7 +36,7 @@ header{
   padding:18px;
   margin-bottom:16px;
 }
-h1,h2,h3{margin:0 0 10px}
+h2,h3{margin:0 0 10px}
 .muted{color:var(--muted);font-size:13px}
 .row{display:flex;gap:10px;align-items:center;margin-top:10px}
 .space{justify-content:space-between}
@@ -53,8 +51,7 @@ button{
 }
 button:active{transform:scale(.97)}
 input{
-  width:100%;
-  padding:12px;
+  padding:10px;
   border-radius:12px;
   border:1px solid rgba(255,255,255,.1);
   background:#0f1625;
@@ -100,21 +97,24 @@ input{
     <button data-user="Dad">Dad</button>
     <button data-user="Brother">Brother</button>
   </div>
-  <div class="muted" id="loginError"></div>
 </div>
 
 <!-- APP -->
 <div id="app" class="hidden">
 
+<!-- DATE SELECT -->
 <div class="card">
   <div class="row space">
     <div>
-      <h2 id="today"></h2>
-      <div class="muted" id="goal"></div>
+      <h2 id="dateLabel"></h2>
+      <div class="muted" id="goalLabel"></div>
     </div>
-    <div id="streak"></div>
+    <input type="date" id="datePicker" />
   </div>
+</div>
 
+<!-- ENTRY -->
+<div class="card">
   <div class="big" id="count">0</div>
   <div class="muted" id="progress"></div>
 
@@ -132,8 +132,9 @@ input{
   </div>
 </div>
 
+<!-- LEADERBOARD -->
 <div class="card">
-  <h3>Leaderboard (Today)</h3>
+  <h3>Leaderboard (Selected Day)</h3>
   <div id="leaderboard"></div>
 </div>
 
@@ -147,27 +148,34 @@ const USERS = ["Michael","Dad","Brother"];
 
 /* ================= STATE ================= */
 let user = localStorage.getItem("user");
-let todayKey = new Date().toISOString().slice(0,10);
+let selectedDate = todayKey();
 let data = JSON.parse(localStorage.getItem("pushupData")||"{}");
 let undoStack = [];
 
 /* ================= HELPERS ================= */
-function goalForToday(){
-  let d=new Date();
+function todayKey(){
+  return new Date().toISOString().slice(0,10);
+}
+function keyToDate(k){
+  return new Date(k+"T00:00");
+}
+function goalFor(k){
+  let d=keyToDate(k);
   return (d.getMonth()+1)*d.getDate();
 }
 function save(){
   localStorage.setItem("pushupData",JSON.stringify(data));
 }
-function getLog(u){
+function getLog(u,k){
   data[u]=data[u]||{};
-  data[u][todayKey]=data[u][todayKey]||{count:0,done:false};
-  return data[u][todayKey];
+  data[u][k]=data[u][k]||{count:0,done:false};
+  return data[u][k];
 }
 function streak(u){
   let s=0;
   for(let i=0;i<400;i++){
-    let d=new Date();d.setDate(d.getDate()-i);
+    let d=new Date();
+    d.setDate(d.getDate()-i);
     let k=d.toISOString().slice(0,10);
     if(data[u]&&data[u][k]&&data[u][k].done) s++;
     else break;
@@ -176,10 +184,11 @@ function streak(u){
 }
 
 /* ================= LOGIN ================= */
-const pinInput=document.getElementById("pin");
+const pin=document.getElementById("pin");
 const usersDiv=document.getElementById("users");
-pinInput.oninput=()=>{
-  usersDiv.classList.toggle("hidden",pinInput.value!==PIN);
+
+pin.oninput=()=>{
+  usersDiv.classList.toggle("hidden",pin.value!==PIN);
 };
 usersDiv.querySelectorAll("button").forEach(b=>{
   b.onclick=()=>{
@@ -190,38 +199,53 @@ usersDiv.querySelectorAll("button").forEach(b=>{
 });
 
 /* ================= APP ================= */
+const datePicker=document.getElementById("datePicker");
+
+datePicker.max=todayKey();
+datePicker.value=selectedDate;
+
+datePicker.onchange=()=>{
+  selectedDate=datePicker.value;
+  undoStack=[];
+  render();
+};
+
 function boot(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-
-  const d=new Date();
-  document.getElementById("today").innerText=d.toDateString();
-  document.getElementById("goal").innerText=`Goal: ${goalForToday()} pushups`;
   render();
 }
 
 function render(){
-  let log=getLog(user);
+  let d=keyToDate(selectedDate);
+  let goal=goalFor(selectedDate);
+  let log=getLog(user,selectedDate);
+
+  document.getElementById("dateLabel").innerText=
+    selectedDate===todayKey()
+      ? d.toDateString()+" (Today)"
+      : d.toDateString()+" (Past Entry)";
+
+  document.getElementById("goalLabel").innerText=`Goal: ${goal} pushups`;
   document.getElementById("count").innerText=log.count;
   document.getElementById("progress").innerText=
-    `${log.count} / ${goalForToday()}`;
-  document.getElementById("streak").innerText=
-    `🔥 Streak: ${streak(user)}`;
+    `${log.count} / ${goal}`;
 
   let lb=document.getElementById("leaderboard");
   lb.innerHTML="";
   USERS.forEach(u=>{
-    let c=(data[u]&&data[u][todayKey])?data[u][todayKey].count:0;
+    let c=(data[u]&&data[u][selectedDate])?data[u][selectedDate].count:0;
     let div=document.createElement("div");
     div.className="lb";
-    div.innerHTML=`<strong>${u}</strong><span>${c}/${goalForToday()}</span>`;
+    div.innerHTML=`<strong>${u}</strong><span>${c}/${goal}</span>`;
     lb.appendChild(div);
   });
+
   save();
 }
 
 function add(n){
-  let log=getLog(user);
+  let log=getLog(user,selectedDate);
   log.count+=n;
   undoStack.push(n);
   render();
@@ -229,12 +253,12 @@ function add(n){
 function undo(){
   let n=undoStack.pop();
   if(!n)return;
-  getLog(user).count-=n;
+  getLog(user,selectedDate).count-=n;
   render();
 }
 function finish(){
-  let log=getLog(user);
-  if(log.count>=goalForToday()) log.done=true;
+  let log=getLog(user,selectedDate);
+  if(log.count>=goalFor(selectedDate)) log.done=true;
   render();
 }
 
