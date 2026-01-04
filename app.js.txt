@@ -1,0 +1,425 @@
+// app.js
+import { firebaseConfig } from "./firebase-init.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+// ----------------------------
+// Firebase init
+// ----------------------------
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ----------------------------
+// UI refs
+// ----------------------------
+const authCard = document.getElementById("authCard");
+const appCard = document.getElementById("appCard");
+
+const emailEl = document.getElementById("email");
+const passwordEl = document.getElementById("password");
+const btnSignIn = document.getElementById("btnSignIn");
+const btnSignUp = document.getElementById("btnSignUp");
+const btnSignOut = document.getElementById("btnSignOut");
+const authError = document.getElementById("authError");
+
+const todayLabel = document.getElementById("todayLabel");
+const goalLabel = document.getElementById("goalLabel");
+const countLabel = document.getElementById("countLabel");
+const countSub = document.getElementById("countSub");
+const streakPill = document.getElementById("streakPill");
+const leaderboard = document.getElementById("leaderboard");
+const leaderboardDateLabel = document.getElementById("leaderboardDateLabel");
+const ytdLabel = document.getElementById("ytdLabel");
+
+const btnUndo = document.getElementById("btnUndo");
+const btnDone = document.getElementById("btnDone");
+
+// Install button (PWA)
+const btnInstall = document.getElementById("btnInstall");
+let deferredPrompt = null;
+
+// ----------------------------
+// State
+// ----------------------------
+let currentUser = null;
+let todayDocId = null;
+let required = 0;
+let completed = 0;
+let undoStack = []; // store increments for undo
+
+// ----------------------------
+// Helpers
+// ----------------------------
+function pad2(n){ return String(n).padStart(2,"0"); }
+
+function localDateKey(d){
+  // YYYY-MM-DD in local time
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+function requiredPushupsForDate(d){
+  const m = d.getMonth()+1;
+  const day = d.getDate();
+  return m * day;
+}
+
+function formatPrettyDate(d){
+  return d.toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"long", day:"numeric" });
+}
+
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+function setAuthError(msg){
+  authError.hidden = !msg;
+  authError.textContent = msg || "";
+}
+
+async function ensureUserProfile(uid, email){
+  const userRef = doc(db, "users", uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()){
+    // default name from email prefix
+    const name = (email || "User").split("@")[0];
+    await setDoc(userRef, {
+      email: email || null,
+      name,
+      createdAt: Date.now(),
+    }, { merge:true });
+  }
+}
+
+async function getUserProfiles(){
+  const snaps = await getDocs(collection(db, "users"));
+  const users = [];
+  snaps.forEach(s => users.push({ uid: s.id, ...s.data() }));
+  return users;
+}
+
+function logDocId(uid, dateKey){
+  return `${uid}_${dateKey}`;
+}
+
+async function loadToday(){
+  const d = new Date();
+  const dateKey = localDateKey(d);
+  todayDocId = logDocId(currentUser.uid, dateKey);
+  required = requiredPushupsForDate(d);
+
+  todayLabel.textContent = formatPrettyDate(d);
+  goalLabel.textContent = `Goal: ${required} pushups (${d.getMonth()+1} × ${d.getDate()})`;
+  leaderboardDateLabel.textContent = dateKey;
+
+  const ref = doc(db, "logs", todayDocId);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()){
+    const data = snap.data();
+    completed = Number(data.completed || 0);
+  } else {
+    completed = 0;
+    await setDoc(ref, {
+      uid: currentUser.uid,
+      dateKey,
+      year: d.getFullYear(),
+      month: d.getMonth()+1,
+      day: d.getDate(),
+      required,
+      completed: 0,
+      done: false,
+      updatedAt: Date.now(),
+      createdAt: Date.now(),
+    }, { merge:true });
+  }
+
+  undoStack = [];
+  renderCount();
+}
+
+function renderCount(){
+  completed = clamp(completed, 0, 99999);
+  countLabel.textContent = completed;
+
+  const done = completed >= required;
+  const doneText = done ? `✅ Completed: ${completed} / ${required}` : `Completed: ${completed} / ${required}`;
+  const remaining = Math.max(0, required - completed);
+  countSub.textContent = `${doneText} • Remaining: ${remaining}`;
+
+  btnDone.disabled = completed < required;
+  btnDone.textContent = completed >= required ? "Done for today ✅" : "Hit goal to finish ✅";
+}
+
+async function saveToday(partial=false){
+  if (!currentUser || !todayDocId) return;
+  const d = new Date();
+  const dateKey = localDateKey(d);
+  const ref = doc(db, "logs", todayDocId);
+
+  const done = completed >= required;
+  await setDoc(ref, {
+    uid: currentUser.uid,
+    dateKey,
+    year: d.getFullYear(),
+    month: d.getMonth()+1,
+    day: d.getDate(),
+    required,
+    completed,
+    done: partial ? false : done,
+    updatedAt: Date.now(),
+    completedAt: (!partial && done) ? Date.now() : null,
+  }, { merge:true });
+}
+
+async function computeYTD(uid){
+  const d = new Date();
+  const year = d.getFullYear();
+  const q = query(collection(db, "logs"), where("uid","==",uid), where("year","==",year));
+  const snaps = await getDocs(q);
+
+  let total = 0;
+  let daysDone = 0;
+  snaps.forEach(s=>{
+    const data = s.data();
+    total += Number(data.completed || 0);
+    if (data.done) daysDone += 1;
+  });
+
+  return { total, daysDone };
+}
+
+async function computeStreak(uid){
+  // streak = consecutive done days ending today (inclusive)
+  // We’ll read this year’s logs, map by dateKey, then walk backward.
+  const d = new Date();
+  const year = d.getFullYear();
+  const q = query(collection(db, "logs"), where("uid","==",uid), where("year","==",year));
+  const snaps = await getDocs(q);
+
+  const doneByDate = new Map();
+  snaps.forEach(s=>{
+    const data = s.data();
+    if (data.dateKey) doneByDate.set(data.dateKey, !!data.done);
+  });
+
+  let streak = 0;
+  for (let i=0; i<400; i++){
+    const di = new Date(d);
+    di.setDate(d.getDate()-i);
+    const key = localDateKey(di);
+
+    // stop if not done
+    if (!doneByDate.get(key)) break;
+    streak += 1;
+  }
+  return streak;
+}
+
+async function loadLeaderboard(){
+  const users = await getUserProfiles();
+  const d = new Date();
+  const dateKey = localDateKey(d);
+  const year = d.getFullYear();
+
+  // Pull today’s completion + YTD totals for each user
+  const rows = [];
+  for (const u of users){
+    const todayId = logDocId(u.uid, dateKey);
+    const snap = await getDoc(doc(db, "logs", todayId));
+    const todayCompleted = snap.exists() ? Number(snap.data().completed || 0) : 0;
+    const todayRequired = requiredPushupsForDate(d);
+    const todayDone = todayCompleted >= todayRequired;
+
+    // YTD totals
+    const qy = query(collection(db, "logs"), where("uid","==",u.uid), where("year","==",year));
+    const ys = await getDocs(qy);
+    let ytdTotal = 0;
+    let ytdDoneDays = 0;
+    ys.forEach(s=>{
+      const data = s.data();
+      ytdTotal += Number(data.completed || 0);
+      if (data.done) ytdDoneDays += 1;
+    });
+
+    rows.push({
+      uid: u.uid,
+      name: u.name || u.email || "User",
+      todayCompleted,
+      todayRequired,
+      todayDone,
+      ytdTotal,
+      ytdDoneDays,
+    });
+  }
+
+  // Rank: todayDone desc, then todayCompleted desc, then ytdTotal desc
+  rows.sort((a,b)=>{
+    if (a.todayDone !== b.todayDone) return (b.todayDone - a.todayDone);
+    if (a.todayCompleted !== b.todayCompleted) return (b.todayCompleted - a.todayCompleted);
+    return (b.ytdTotal - a.ytdTotal);
+  });
+
+  leaderboard.innerHTML = "";
+  rows.forEach((r, idx)=>{
+    const div = document.createElement("div");
+    div.className = "lbRow";
+    const left = document.createElement("div");
+    left.className = "lbLeft";
+
+    const rank = document.createElement("div");
+    rank.className = "rank";
+    rank.textContent = String(idx+1);
+
+    const nameWrap = document.createElement("div");
+    const nm = document.createElement("div");
+    nm.className = "name";
+    nm.textContent = r.name;
+    const meta = document.createElement("div");
+    meta.className = "lbMeta";
+    meta.textContent = `${r.todayDone ? "✅" : "⏳"} Today: ${r.todayCompleted}/${r.todayRequired} • YTD: ${r.ytdTotal}`;
+
+    nameWrap.appendChild(nm);
+    nameWrap.appendChild(meta);
+
+    left.appendChild(rank);
+    left.appendChild(nameWrap);
+
+    const right = document.createElement("div");
+    right.className = "lbMeta";
+    right.textContent = (r.todayDone ? "🔥 done" : `${Math.max(0, r.todayRequired - r.todayCompleted)} left`);
+
+    div.appendChild(left);
+    div.appendChild(right);
+
+    leaderboard.appendChild(div);
+  });
+}
+
+// ----------------------------
+// Events
+// ----------------------------
+btnSignIn.addEventListener("click", async ()=>{
+  setAuthError("");
+  try{
+    await signInWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
+  } catch(e){
+    setAuthError(e.message || "Sign in failed.");
+  }
+});
+
+btnSignUp.addEventListener("click", async ()=>{
+  setAuthError("");
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
+    await ensureUserProfile(cred.user.uid, cred.user.email);
+  } catch(e){
+    setAuthError(e.message || "Sign up failed.");
+  }
+});
+
+btnSignOut.addEventListener("click", async ()=>{
+  await signOut(auth);
+});
+
+document.querySelectorAll(".tap").forEach(btn=>{
+  btn.addEventListener("click", async ()=>{
+    const add = Number(btn.dataset.add || 0);
+    if (!add) return;
+    completed += add;
+    undoStack.push(add);
+    renderCount();
+    await saveToday(true); // partial save (not "done" yet)
+    await loadLeaderboard();
+    const ytd = await computeYTD(currentUser.uid);
+    ytdLabel.textContent = `Total pushups in ${new Date().getFullYear()}: ${ytd.total} • Days completed: ${ytd.daysDone}`;
+  });
+});
+
+btnUndo.addEventListener("click", async ()=>{
+  const last = undoStack.pop();
+  if (!last) return;
+  completed -= last;
+  renderCount();
+  await saveToday(true);
+  await loadLeaderboard();
+});
+
+btnDone.addEventListener("click", async ()=>{
+  if (completed < required) return;
+  await saveToday(false);
+  const streak = await computeStreak(currentUser.uid);
+  streakPill.textContent = `🔥 Streak: ${streak}`;
+  await loadLeaderboard();
+  const ytd = await computeYTD(currentUser.uid);
+  ytdLabel.textContent = `Total pushups in ${new Date().getFullYear()}: ${ytd.total} • Days completed: ${ytd.daysDone}`;
+});
+
+// ----------------------------
+// Auth listener boot
+// ----------------------------
+onAuthStateChanged(auth, async (user)=>{
+  currentUser = user || null;
+
+  if (!currentUser){
+    authCard.hidden = false;
+    appCard.hidden = true;
+    btnSignOut.hidden = true;
+    return;
+  }
+
+  await ensureUserProfile(currentUser.uid, currentUser.email);
+
+  authCard.hidden = true;
+  appCard.hidden = false;
+  btnSignOut.hidden = false;
+
+  await loadToday();
+
+  const streak = await computeStreak(currentUser.uid);
+  streakPill.textContent = `🔥 Streak: ${streak}`;
+
+  const ytd = await computeYTD(currentUser.uid);
+  ytdLabel.textContent = `Total pushups in ${new Date().getFullYear()}: ${ytd.total} • Days completed: ${ytd.daysDone}`;
+
+  await loadLeaderboard();
+});
+
+// ----------------------------
+// PWA install + service worker
+// ----------------------------
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", async ()=>{
+    try{
+      await navigator.serviceWorker.register("./sw.js");
+    } catch {}
+  });
+}
+
+window.addEventListener("beforeinstallprompt", (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  btnInstall.hidden = false;
+});
+
+btnInstall.addEventListener("click", async ()=>{
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  btnInstall.hidden = true;
+});

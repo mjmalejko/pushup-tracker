@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>2026 Push-Up Challenge</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">💪</div>
+      <div>
+        <div class="title">2026 Push-Up Challenge</div>
+        <div class="subtitle" id="subtitle">Month × Day</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost" id="btnInstall" hidden>Install</button>
+      <button class="btn ghost" id="btnSignOut" hidden>Sign out</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- AUTH -->
+    <section class="card" id="authCard">
+      <h2>Sign in</h2>
+      <p class="muted">Use your email/password. (We’ll create accounts for you, Dad, and Brother.)</p>
+
+      <div class="grid2">
+        <label>
+          Email
+          <input id="email" type="email" placeholder="you@email.com" />
+        </label>
+        <label>
+          Password
+          <input id="password" type="password" placeholder="••••••••" />
+        </label>
+      </div>
+
+      <div class="row">
+        <button class="btn" id="btnSignIn">Sign in</button>
+        <button class="btn secondary" id="btnSignUp">Create account</button>
+      </div>
+
+      <div class="error" id="authError" hidden></div>
+    </section>
+
+    <!-- APP -->
+    <section class="card" id="appCard" hidden>
+      <div class="row space">
+        <div>
+          <div class="h1" id="todayLabel">Today</div>
+          <div class="muted" id="goalLabel">Goal: --</div>
+        </div>
+        <div class="pill" id="streakPill">🔥 Streak: --</div>
+      </div>
+
+      <div class="progressWrap">
+        <div class="bigCount" id="countLabel">0</div>
+        <div class="muted" id="countSub">Completed: 0 / 0</div>
+      </div>
+
+      <div class="tapGrid">
+        <button class="tap" data-add="1">+1</button>
+        <button class="tap" data-add="5">+5</button>
+        <button class="tap" data-add="10">+10</button>
+        <button class="tap" data-add="20">+20</button>
+        <button class="tap" data-add="50">+50</button>
+      </div>
+
+      <div class="row">
+        <button class="btn secondary" id="btnUndo">Undo</button>
+        <button class="btn" id="btnDone">Done for today ✅</button>
+      </div>
+
+      <hr class="sep" />
+
+      <div class="row space">
+        <h3>Leaderboard</h3>
+        <div class="muted" id="leaderboardDateLabel"></div>
+      </div>
+
+      <div class="leaderboard" id="leaderboard"></div>
+
+      <hr class="sep" />
+
+      <div class="row space">
+        <h3>Your 2026 totals</h3>
+        <div class="muted" id="ytdLabel">--</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer muted">
+    Tip: Add to Home Screen for a true app feel.
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
