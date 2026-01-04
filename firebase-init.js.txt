@@ -1,9 +1,8 @@
-// firebase-init.js
 export const firebaseConfig = {
-  apiKey: "PASTE",
-  authDomain: "PASTE",
-  projectId: "PASTE",
-  storageBucket: "PASTE",
-  messagingSenderId: "PASTE",
-  appId: "PASTE",
+  apiKey: "AIza...",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123:web:abc"
 };
