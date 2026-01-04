@@ -160,6 +160,21 @@ input{
 </div>
 
 <script>
+// 🔒 Disable double-tap zoom (iOS Safari)
+let lastTouchEnd = 0;
+document.addEventListener(
+  "touchend",
+  function (event) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  },
+  { passive: false }
+);
+
+  
 /* ================= CONFIG ================= */
 const PIN = "2026";
 const USERS = ["Michael","Dad","Brother"];
@@ -286,5 +301,6 @@ if(user) boot();
 
 </body>
 </html>
+
 
 
