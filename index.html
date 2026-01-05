@@ -119,11 +119,7 @@ button{
     </div>
     <input type="date" id="datePicker" />
   </div>
-  <div class="small" style="margin-top:8px;">
-    🔥 Streak: <span id="streakLabel">0</span>
-  </div>
-</div>
-
+  
 <div class="card">
   <div class="big" id="count">0</div>
   <div id="progress" class="small" style="text-align:center;"></div>
@@ -245,18 +241,7 @@ async function loadActualsThrough(dateKey){
   return totals;
 }
 
-async function computeStreak(u){
-  let s=0;
-  for(let i=0;i<400;i++){
-    const d=new Date();
-    d.setDate(d.getDate()-i);
-    const k=`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    if(k<YEAR_START) break;
-    const snap=await db.collection("logs").doc(docId(u,k)).get();
-    if(snap.exists && snap.data().done) s++; else break;
-  }
-  return s;
-}
+
 
 /* ================= LOGIN ================= */
 const pin=document.getElementById("pin");
@@ -304,9 +289,6 @@ async function render(){
     `Goal: ${goal} (${d.getMonth()+1} × ${d.getDate()})`;
   document.getElementById("count").innerText=log.count;
   document.getElementById("progress").innerText=`${log.count} / ${goal}`;
-
-  document.getElementById("streakLabel").innerText=
-    await computeStreak(user);
 
   const possible=totalPossibleThrough(selectedDate);
   const actuals=await loadActualsThrough(selectedDate);
@@ -374,3 +356,4 @@ if(user && lastPinDate===todayKey()) boot();
 
 </body>
 </html>
+
