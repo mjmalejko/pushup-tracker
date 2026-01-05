@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Push-Up 2026" />
 <meta name="theme-color" content="#0b0f14" />
 
+<!-- Firebase (compat for single-file app) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 
@@ -25,35 +26,114 @@ html,body{
   touch-action:manipulation;
   overscroll-behavior:none;
 }
-button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-header{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);font-weight:900}
-.container{max-width:760px;margin:20px auto;padding:0 14px}
-.card{background:#121926;border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px;margin-bottom:16px}
+button{
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+header{
+  padding:14px 16px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  font-weight:900;
+}
+.container{
+  max-width:760px;
+  margin:20px auto;
+  padding:0 14px;
+}
+.card{
+  background:#121926;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:16px;
+}
 .row{display:flex;gap:10px;align-items:center}
 .space{justify-content:space-between}
 .hidden{display:none}
 .small{font-size:13px;opacity:.75}
-input{padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:#0f1625;color:#fff}
-button{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:#1b2436;color:#fff;font-weight:800;cursor:pointer}
-.big{font-size:56px;font-weight:900;text-align:center}
-.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-@media(max-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}
-.lb{border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;margin-top:10px}
-.lb-top{display:flex;justify-content:space-between;font-weight:800}
-.lb-sub{font-size:13px;opacity:.75;margin-top:4px}
-.calendar{display:grid;grid-template-columns:repeat(31,1fr);gap:4px;margin-top:12px}
-.day{border-radius:6px;padding:4px;font-size:11px;text-align:center;border:1px solid rgba(255,255,255,.1)}
+
+input{
+  padding:10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.15);
+  background:#0f1625;
+  color:#fff;
+}
+button{
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.15);
+  background:#1b2436;
+  color:#fff;
+  font-weight:800;
+  cursor:pointer;
+}
+.big{
+  font-size:56px;
+  font-weight:900;
+  text-align:center;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+}
+@media(max-width:600px){
+  .grid{grid-template-columns:repeat(3,1fr)}
+}
+
+.lb{
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;
+  padding:12px;
+  margin-top:10px;
+}
+.lb-top{
+  display:flex;
+  justify-content:space-between;
+  font-weight:800;
+}
+.lb-sub{
+  font-size:13px;
+  opacity:.75;
+  margin-top:4px;
+}
+
+.calendar{
+  display:grid;
+  grid-template-columns:repeat(31,1fr);
+  gap:6px;
+  margin-top:12px;
+}
+.day{
+  border-radius:8px;
+  padding:6px;
+  font-size:11px;
+  border:1px solid rgba(255,255,255,.12);
+  background:#111827;
+}
 .day.today{outline:2px solid #5eead4}
-.day.empty{background:transparent;border:none}
-.day.low{background:#1f2937}
-.day.mid{background:#2563eb}
-.day.high{background:#16a34a}
-.day.full{background:#22c55e;font-weight:800}
+.day.future{background:transparent;border:none}
+
+.day-title{
+  font-weight:800;
+  text-align:center;
+  margin-bottom:4px;
+}
+.check{
+  display:flex;
+  justify-content:space-between;
+  font-size:10px;
+}
+.check.done{color:#22c55e}
+.check.miss{color:#fb7185}
 </style>
 </head>
 
 <body>
+
 <header>💪 2026 Push-Up Challenge</header>
+
 <div class="container">
 
 <!-- LOGIN -->
@@ -64,7 +144,6 @@ button{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.15);ba
     <button data-user="Michael">Michael</button>
     <button data-user="Dad">Dad</button>
     <button data-user="Tom">Tom</button>
-    <button data-user="Test">Test</button>
   </div>
   <div class="small" style="margin-top:8px;">PIN required once per day</div>
 </div>
@@ -85,6 +164,7 @@ button{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.15);ba
 <div class="card">
   <div class="big" id="count">0</div>
   <div id="progress" class="small" style="text-align:center;"></div>
+
   <div class="grid" style="margin-top:12px;">
     <button onclick="add(1)">+1</button>
     <button onclick="add(5)">+5</button>
@@ -92,6 +172,7 @@ button{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.15);ba
     <button onclick="add(20)">+20</button>
     <button onclick="add(50)">+50</button>
   </div>
+
   <div class="row" style="margin-top:12px;">
     <button onclick="undo()">Undo</button>
     <button onclick="finish()">Done ✅</button>
@@ -108,15 +189,17 @@ button{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.15);ba
 
 <div id="calendarCard" class="card hidden">
   <h3>2026 Push-Up Calendar</h3>
-  <div class="small">Each square = one day • number = pushups completed</div>
+  <div class="small">Daily completion by person</div>
   <div id="calendarGrid" class="calendar"></div>
 </div>
 
 <button onclick="logout()">Switch User</button>
+
+</div>
 </div>
 
 <script>
-// disable double-tap zoom
+// Disable iOS double-tap zoom
 let lastTouchEnd=0;
 document.addEventListener("touchend",e=>{
   const now=Date.now();
@@ -125,11 +208,12 @@ document.addEventListener("touchend",e=>{
 },{passive:false});
 
 const PIN="2026";
-const USERS=["Michael","Dad","Tom","Test"];
+const USERS=["Michael","Dad","Tom"];
 const YEAR=2026;
 const YEAR_START="2026-01-01";
 const YEAR_END="2026-12-31";
 
+/* ================= FIREBASE ================= */
 firebase.initializeApp({
   apiKey:"AIzaSyBrSIvUhk2zmNHiA_86QtlAvO0GleNfT9Q",
   authDomain:"pushup-challenge-edb93.firebaseapp.com",
@@ -140,25 +224,38 @@ firebase.initializeApp({
 });
 const db=firebase.firestore();
 
+/* ================= DATE HELPERS ================= */
 const pad2=n=>String(n).padStart(2,"0");
-const todayKey=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`};
+const todayKey=()=>{
+  const d=new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+};
 const dateFromKey=k=>new Date(k+"T00:00:00");
-const goalFor=k=>{const d=dateFromKey(k);return (d.getMonth()+1)*d.getDate()};
+const goalFor=k=>{
+  const d=dateFromKey(k);
+  return (d.getMonth()+1)*d.getDate();
+};
 const docId=(u,d)=>`${u.toLowerCase()}_${d}`;
 
+/* ================= STATE ================= */
 let selectedDate=todayKey();
 let undoStack=[];
 let session=JSON.parse(localStorage.getItem("session")||"null");
 let user=session?.user||null;
 let lastPinDate=session?.date||null;
 
+/* ================= FIRESTORE HELPERS ================= */
 async function loadLog(u,d){
   const s=await db.collection("logs").doc(docId(u,d)).get();
   return s.exists?s.data():{count:0,done:false};
 }
 async function saveLog(u,d,log){
   await db.collection("logs").doc(docId(u,d)).set({
-    user:u,date:d,year:YEAR,count:log.count,goal:goalFor(d),done:!!log.done,updatedAt:Date.now()
+    user:u,date:d,year:YEAR,
+    count:log.count,
+    goal:goalFor(d),
+    done:!!log.done,
+    updatedAt:Date.now()
   },{merge:true});
 }
 
@@ -174,7 +271,8 @@ function totalPossibleBetween(startKey,endKey){
 }
 
 async function loadActualsThrough(dateKey){
-  const totals={}; USERS.forEach(u=>totals[u]=0);
+  const totals={};
+  USERS.forEach(u=>totals[u]=0);
   const snap=await db.collection("logs").where("year","==",YEAR).get();
   snap.forEach(doc=>{
     const r=doc.data();
@@ -185,6 +283,7 @@ async function loadActualsThrough(dateKey){
   return totals;
 }
 
+/* ================= LOGIN ================= */
 const pin=document.getElementById("pin");
 const users=document.getElementById("users");
 pin.oninput=()=>users.classList.toggle("hidden",pin.value!==PIN);
@@ -196,12 +295,18 @@ users.querySelectorAll("button").forEach(b=>{
   };
 });
 
+/* ================= APP ================= */
 const datePicker=document.getElementById("datePicker");
 datePicker.min=YEAR_START;
 datePicker.max=todayKey();
+
 datePicker.onchange=()=>{
-  if(datePicker.value<YEAR_START||datePicker.value>todayKey()){datePicker.value=selectedDate;return;}
-  selectedDate=datePicker.value;undoStack=[];render();
+  if(datePicker.value<YEAR_START||datePicker.value>todayKey()){
+    datePicker.value=selectedDate;return;
+  }
+  selectedDate=datePicker.value;
+  undoStack=[];
+  render();
 };
 
 async function boot(){
@@ -218,16 +323,24 @@ async function render(){
   const goal=goalFor(selectedDate);
   const d=dateFromKey(selectedDate);
 
-  document.getElementById("dateLabel").innerText=d.toDateString()+(selectedDate===todayKey()?" (Today)":" (Past)");
-  document.getElementById("goalLabel").innerText=`Goal: ${goal} (${d.getMonth()+1} × ${d.getDate()})`;
+  document.getElementById("dateLabel").innerText=
+    d.toDateString()+(selectedDate===todayKey()?" (Today)":" (Past)");
+  document.getElementById("goalLabel").innerText=
+    `Goal: ${goal} (${d.getMonth()+1} × ${d.getDate()})`;
   document.getElementById("count").innerText=log.count;
   document.getElementById("progress").innerText=`${log.count} / ${goal}`;
 
   const completed=await loadActualsThrough(selectedDate);
-  const remainingPossible= totalPossibleBetween(
-    new Date(selectedDate+"T00:00:00").toISOString().slice(0,10).replace(/-\d\d$/,"-"+pad2(d.getDate()+1)),
-    YEAR_END
-  );
+  const nextDayKey=new Date(selectedDate+"T00:00:00");
+  nextDayKey.setDate(nextDayKey.getDate()+1);
+  const remainingPossible=
+    nextDayKey<=new Date(YEAR_END+"T00:00:00")
+      ? totalPossibleBetween(
+          `${nextDayKey.getFullYear()}-${pad2(nextDayKey.getMonth()+1)}-${pad2(nextDayKey.getDate())}`,
+          YEAR_END
+        )
+      : 0;
+
   const fullYearPossible=totalPossibleBetween(YEAR_START,YEAR_END);
 
   const lb=document.getElementById("leaderboard");
@@ -255,6 +368,7 @@ async function render(){
   });
 }
 
+/* ================= CALENDAR ================= */
 async function toggleCalendar(){
   const c=document.getElementById("calendarCard");
   c.classList.toggle("hidden");
@@ -264,49 +378,82 @@ async function toggleCalendar(){
 async function renderCalendar(){
   const grid=document.getElementById("calendarGrid");
   grid.innerHTML="";
-  const snap=await db.collection("logs").where("year","==",YEAR).where("user","==",user).get();
-  const logs={}; snap.forEach(d=>logs[d.data().date]=d.data().count||0);
   const today=todayKey();
+
+  const snap=await db.collection("logs").where("year","==",YEAR).get();
+  const logsByDate={};
+  snap.forEach(doc=>{
+    const r=doc.data();
+    if(!logsByDate[r.date]) logsByDate[r.date]={};
+    logsByDate[r.date][r.user]=r.count||0;
+  });
+
   const cur=new Date(YEAR_START+"T00:00:00");
   const end=new Date(YEAR_END+"T00:00:00");
 
   while(cur<=end){
     const key=`${cur.getFullYear()}-${pad2(cur.getMonth()+1)}-${pad2(cur.getDate())}`;
     const cell=document.createElement("div");
-    if(key>today){cell.className="day empty";grid.appendChild(cell);cur.setDate(cur.getDate()+1);continue;}
-    const done=logs[key]||0;
-    const g=goalFor(key);
-    const pct=g?done/g:0;
-    let cls="day low";
-    if(pct>=1) cls="day full";
-    else if(pct>=.75) cls="day high";
-    else if(pct>=.25) cls="day mid";
-    cell.className=cls+(key===today?" today":"");
-    cell.innerHTML=`<div>${cur.getDate()}</div><div>${done}</div>`;
+
+    if(key>today){
+      cell.className="day future";
+      grid.appendChild(cell);
+      cur.setDate(cur.getDate()+1);
+      continue;
+    }
+
+    const goal=goalFor(key);
+    cell.className="day"+(key===today?" today":"");
+    let html=`<div class="day-title">${cur.getMonth()+1}/${cur.getDate()}</div>`;
+
+    USERS.forEach(u=>{
+      const c=logsByDate[key]?.[u]||0;
+      const done=c>=goal;
+      html+=`
+        <div class="check ${done?"done":"miss"}">
+          <span>${u}</span>
+          <span>${done?"✔":"✘"}</span>
+        </div>`;
+    });
+
+    cell.innerHTML=html;
     grid.appendChild(cell);
     cur.setDate(cur.getDate()+1);
   }
 }
 
+/* ================= ACTIONS ================= */
 async function add(n){
   const log=await loadLog(user,selectedDate);
-  log.count+=n;undoStack.push(n);
-  await saveLog(user,selectedDate,log);render();
+  log.count+=n;
+  undoStack.push(n);
+  await saveLog(user,selectedDate,log);
+  render();
 }
 async function undo(){
-  const n=undoStack.pop();if(!n)return;
+  const n=undoStack.pop();
+  if(!n) return;
   const log=await loadLog(user,selectedDate);
   log.count=Math.max(0,log.count-n);
-  await saveLog(user,selectedDate,log);render();
+  await saveLog(user,selectedDate,log);
+  render();
 }
 async function finish(){
   const log=await loadLog(user,selectedDate);
-  if(log.count>=goalFor(selectedDate)){log.done=true;await saveLog(user,selectedDate,log);}
+  if(log.count>=goalFor(selectedDate)){
+    log.done=true;
+    await saveLog(user,selectedDate,log);
+  }
   render();
 }
-function logout(){localStorage.removeItem("session");location.reload();}
+function logout(){
+  localStorage.removeItem("session");
+  location.reload();
+}
 
-if(user&&lastPinDate===todayKey()) boot();
+/* ================= AUTO LOGIN ================= */
+if(user && lastPinDate===todayKey()) boot();
 </script>
+
 </body>
 </html>
