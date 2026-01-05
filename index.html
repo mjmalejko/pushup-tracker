@@ -1,26 +1,29 @@
-
 <!doctype html>
 <html lang="en">
 <head>
-  <!-- App Icons -->
-<link rel="icon" href="icon.png" />
-<link rel="apple-touch-icon" href="icon.png" />
-
-<!-- iOS PWA Meta -->
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Push-Up 2026" />
-
-<!-- Android / General -->
-<meta name="theme-color" content="#0b0f14" />
-
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport"
+  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
 <title>2026 Push-Up Challenge</title>
 
-<style>
+<!-- App Icon -->
+<link rel="icon" href="icon.png" />
+<link rel="apple-touch-icon" href="icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Push-Up 2026" />
+<meta name="theme-color" content="#0b0f14" />
 
+<!-- Firebase (compat for single-file apps) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+
+<style>
 html, body {
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  background:#0b0f14;
+  color:#eaf0ff;
   touch-action: manipulation;
   overscroll-behavior: none;
 }
@@ -29,80 +32,72 @@ button {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-  
-:root{
-  --bg:#0b0f14;
-  --card:#121926;
-  --text:#eaf0ff;
-  --muted:#9aa7bd;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  background:var(--bg);
-  color:var(--text);
-}
-header{
+
+header {
   padding:14px 16px;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  font-weight:800;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  font-weight:900;
 }
-.container{
+
+.container {
   max-width:720px;
   margin:20px auto;
   padding:0 14px;
 }
-.card{
-  background:var(--card);
-  border:1px solid rgba(255,255,255,.08);
+
+.card {
+  background:#121926;
+  border:1px solid rgba(255,255,255,.1);
   border-radius:16px;
   padding:18px;
   margin-bottom:16px;
 }
-h2,h3{margin:0 0 10px}
-.muted{color:var(--muted);font-size:13px}
-.row{display:flex;gap:10px;align-items:center;margin-top:10px}
-.space{justify-content:space-between}
-button{
-  padding:12px 14px;
+
+.row { display:flex; gap:10px; align-items:center; }
+.space { justify-content:space-between; }
+.hidden { display:none; }
+
+button {
+  padding:12px;
   border-radius:14px;
-  border:1px solid rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);
   background:#1b2436;
-  color:var(--text);
+  color:#fff;
   font-weight:800;
   cursor:pointer;
 }
-button:active{transform:scale(.97)}
-input{
+
+input {
   padding:10px;
   border-radius:12px;
-  border:1px solid rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);
   background:#0f1625;
-  color:var(--text);
+  color:#fff;
 }
-.big{
+
+.big {
   font-size:56px;
   font-weight:900;
   text-align:center;
 }
-.grid{
+
+.grid {
   display:grid;
   grid-template-columns:repeat(5,1fr);
   gap:10px;
 }
 @media(max-width:600px){
-  .grid{grid-template-columns:repeat(3,1fr)}
+  .grid { grid-template-columns:repeat(3,1fr); }
 }
-.lb{
+
+.lb {
   display:flex;
   justify-content:space-between;
   padding:10px;
-  border:1px solid rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.1);
   border-radius:12px;
   margin-top:8px;
 }
-.hidden{display:none}
 </style>
 </head>
 
@@ -126,21 +121,19 @@ input{
 <!-- APP -->
 <div id="app" class="hidden">
 
-<!-- DATE SELECT -->
 <div class="card">
   <div class="row space">
     <div>
       <h2 id="dateLabel"></h2>
-      <div class="muted" id="goalLabel"></div>
+      <div id="goalLabel"></div>
     </div>
     <input type="date" id="datePicker" />
   </div>
 </div>
 
-<!-- ENTRY -->
 <div class="card">
   <div class="big" id="count">0</div>
-  <div class="muted" id="progress"></div>
+  <div id="progress"></div>
 
   <div class="grid">
     <button onclick="add(1)">+1</button>
@@ -156,168 +149,169 @@ input{
   </div>
 </div>
 
-<!-- LEADERBOARD -->
 <div class="card">
-  <h3>Leaderboard (Selected Day)</h3>
+  <h3>Leaderboard</h3>
   <div id="leaderboard"></div>
 </div>
+
+<button onclick="logout()">Switch User</button>
 
 </div>
 </div>
 
 <script>
-// 🔒 Disable double-tap zoom (iOS Safari)
+// 🔒 Disable iOS double-tap zoom
 let lastTouchEnd = 0;
-document.addEventListener(
-  "touchend",
-  function (event) {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-      event.preventDefault();
-    }
-    lastTouchEnd = now;
-  },
-  { passive: false }
-);
+document.addEventListener("touchend", e => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive:false });
 
-  
 /* ================= CONFIG ================= */
 const PIN = "2026";
 const USERS = ["Michael","Dad","Brother"];
 
+/* ================= FIREBASE ================= */
+firebase.initializeApp({
+  apiKey: "AIzaSyBrSIvUhk2zmNHiA_86QtlAvO0GleNfT9Q",
+  authDomain: "pushup-challenge-edb93.firebaseapp.com",
+  projectId: "pushup-challenge-edb93",
+  storageBucket: "pushup-challenge-edb93.appspot.com",
+  messagingSenderId: "568991407340",
+  appId: "1:568991407340:web:bf9ff4bc9d480d956599c9"
+});
+const db = firebase.firestore();
+
 /* ================= STATE ================= */
-let user = localStorage.getItem("user");
+const todayKey = () => new Date().toISOString().slice(0,10);
 let selectedDate = todayKey();
-let data = JSON.parse(localStorage.getItem("pushupData")||"{}");
 let undoStack = [];
 
+let session = JSON.parse(localStorage.getItem("session") || "null");
+let user = session?.user || null;
+let lastPinDate = session?.date || null;
+
 /* ================= HELPERS ================= */
-function todayKey(){
-  return new Date().toISOString().slice(0,10);
+const goalFor = d => {
+  const x = new Date(d);
+  return (x.getMonth()+1) * x.getDate();
+};
+const docId = (u,d) => `${u.toLowerCase()}_${d}`;
+
+async function loadLog(u,d){
+  const snap = await db.collection("logs").doc(docId(u,d)).get();
+  return snap.exists ? snap.data() : { count:0, done:false };
 }
-function keyToDate(k){
-  return new Date(k+"T00:00");
+async function saveLog(u,d,log){
+  await db.collection("logs").doc(docId(u,d)).set({
+    user:u, date:d, count:log.count,
+    goal:goalFor(d), done:log.done || false,
+    updatedAt:Date.now()
+  }, { merge:true });
 }
-function goalFor(k){
-  let d=keyToDate(k);
-  return (d.getMonth()+1)*d.getDate();
-}
-function save(){
-  localStorage.setItem("pushupData",JSON.stringify(data));
-}
-function getLog(u,k){
-  data[u]=data[u]||{};
-  data[u][k]=data[u][k]||{count:0,done:false};
-  return data[u][k];
-}
-function streak(u){
+async function streak(u){
   let s=0;
   for(let i=0;i<400;i++){
-    let d=new Date();
-    d.setDate(d.getDate()-i);
+    let d=new Date(); d.setDate(d.getDate()-i);
     let k=d.toISOString().slice(0,10);
-    if(data[u]&&data[u][k]&&data[u][k].done) s++;
-    else break;
+    let snap=await db.collection("logs").doc(docId(u,k)).get();
+    if(snap.exists && snap.data().done) s++; else break;
   }
   return s;
 }
 
 /* ================= LOGIN ================= */
 const pin=document.getElementById("pin");
-const usersDiv=document.getElementById("users");
+const users=document.getElementById("users");
 
-pin.oninput=()=>{
-  usersDiv.classList.toggle("hidden",pin.value!==PIN);
-};
-usersDiv.querySelectorAll("button").forEach(b=>{
+pin.oninput=()=>users.classList.toggle("hidden",pin.value!==PIN);
+
+users.querySelectorAll("button").forEach(b=>{
   b.onclick=()=>{
     user=b.dataset.user;
-    localStorage.setItem("user",user);
+    localStorage.setItem("session",
+      JSON.stringify({ user, date:todayKey() })
+    );
     boot();
   };
 });
 
 /* ================= APP ================= */
 const datePicker=document.getElementById("datePicker");
-
 datePicker.max=todayKey();
 datePicker.value=selectedDate;
 
-datePicker.onchange = () => {
-  const picked = datePicker.value;
-  const today = todayKey();
-
-  // 🚫 Block future dates (hard stop)
-  if (picked > today) {
-    datePicker.value = selectedDate; // revert
-    return;
-  }
-
-  selectedDate = picked;
-  undoStack = [];
+datePicker.onchange=()=>{
+  if(datePicker.value>todayKey()) return;
+  selectedDate=datePicker.value;
+  undoStack=[];
   render();
 };
 
-function boot(){
+async function boot(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   render();
 }
 
-function render(){
-  let d=keyToDate(selectedDate);
-  let goal=goalFor(selectedDate);
-  let log=getLog(user,selectedDate);
+async function render(){
+  if(selectedDate>todayKey()){
+    selectedDate=todayKey();
+    datePicker.value=selectedDate;
+  }
 
-  document.getElementById("dateLabel").innerText=
-    selectedDate===todayKey()
-      ? d.toDateString()+" (Today)"
-      : d.toDateString()+" (Past Entry)";
+  const log=await loadLog(user,selectedDate);
+  const goal=goalFor(selectedDate);
 
-  document.getElementById("goalLabel").innerText=`Goal: ${goal} pushups`;
+  document.getElementById("dateLabel").innerText =
+    new Date(selectedDate).toDateString() +
+    (selectedDate===todayKey() ? " (Today)" : " (Past)");
+
+  document.getElementById("goalLabel").innerText=`Goal: ${goal}`;
   document.getElementById("count").innerText=log.count;
-  document.getElementById("progress").innerText=
-    `${log.count} / ${goal}`;
+  document.getElementById("progress").innerText=`${log.count} / ${goal}`;
 
-  let lb=document.getElementById("leaderboard");
+  const lb=document.getElementById("leaderboard");
   lb.innerHTML="";
-  USERS.forEach(u=>{
-    let c=(data[u]&&data[u][selectedDate])?data[u][selectedDate].count:0;
-    let div=document.createElement("div");
-    div.className="lb";
-    div.innerHTML=`<strong>${u}</strong><span>${c}/${goal}</span>`;
-    lb.appendChild(div);
-  });
-
-  save();
+  for(const u of USERS){
+    const s=await loadLog(u,selectedDate);
+    lb.innerHTML+=`<div class="lb"><b>${u}</b><span>${s.count}/${goal}</span></div>`;
+  }
 }
 
-function add(n){
-  let log=getLog(user,selectedDate);
+/* ================= ACTIONS ================= */
+async function add(n){
+  const log=await loadLog(user,selectedDate);
   log.count+=n;
   undoStack.push(n);
+  await saveLog(user,selectedDate,log);
   render();
 }
-function undo(){
-  let n=undoStack.pop();
-  if(!n)return;
-  getLog(user,selectedDate).count-=n;
+async function undo(){
+  const n=undoStack.pop();
+  if(!n) return;
+  const log=await loadLog(user,selectedDate);
+  log.count=Math.max(0,log.count-n);
+  await saveLog(user,selectedDate,log);
   render();
 }
-function finish(){
-  let log=getLog(user,selectedDate);
-  if(log.count>=goalFor(selectedDate)) log.done=true;
+async function finish(){
+  const log=await loadLog(user,selectedDate);
+  if(log.count>=goalFor(selectedDate)){
+    log.done=true;
+    await saveLog(user,selectedDate,log);
+  }
   render();
+}
+function logout(){
+  localStorage.removeItem("session");
+  location.reload();
 }
 
 /* ================= AUTO LOGIN ================= */
-if(user) boot();
+if(user && lastPinDate===todayKey()) boot();
 </script>
 
 </body>
 </html>
-
-
-
-
-
