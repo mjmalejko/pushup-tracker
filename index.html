@@ -7,52 +7,52 @@
 
 <title>2026 Push-Up Challenge</title>
 
-<!-- App Icon -->
 <link rel="icon" href="icon.png" />
 <link rel="apple-touch-icon" href="icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Push-Up 2026" />
 <meta name="theme-color" content="#0b0f14" />
 
-<!-- Firebase (compat for single-file apps) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 
 <style>
-html, body {
+html,body{
   margin:0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
   background:#0b0f14;
   color:#eaf0ff;
-  touch-action: manipulation;
-  overscroll-behavior: none;
+  touch-action:manipulation;
+  overscroll-behavior:none;
 }
-button {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+button{
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
 }
-header {
+header{
   padding:14px 16px;
   border-bottom:1px solid rgba(255,255,255,.1);
   font-weight:900;
 }
-.container {
-  max-width:720px;
-  margin:20px auto;
-  padding:0 14px;
-}
-.card {
+.container{max-width:760px;margin:20px auto;padding:0 14px}
+.card{
   background:#121926;
   border:1px solid rgba(255,255,255,.1);
   border-radius:16px;
   padding:18px;
   margin-bottom:16px;
 }
-.row { display:flex; gap:10px; align-items:center; }
-.space { justify-content:space-between; }
-.hidden { display:none; }
-
-button {
+.row{display:flex;gap:10px;align-items:center}
+.space{justify-content:space-between}
+.hidden{display:none}
+input{
+  padding:10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.15);
+  background:#0f1625;
+  color:#fff;
+}
+button{
   padding:12px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.15);
@@ -61,38 +61,31 @@ button {
   font-weight:800;
   cursor:pointer;
 }
-input {
-  padding:10px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.15);
-  background:#0f1625;
-  color:#fff;
-}
-.big {
+.big{
   font-size:56px;
   font-weight:900;
   text-align:center;
 }
-.grid {
+.grid{
   display:grid;
   grid-template-columns:repeat(5,1fr);
   gap:10px;
 }
 @media(max-width:600px){
-  .grid { grid-template-columns:repeat(3,1fr); }
+  .grid{grid-template-columns:repeat(3,1fr)}
 }
-.lb {
-  display:flex;
-  justify-content:space-between;
-  padding:10px;
+.lb{
   border:1px solid rgba(255,255,255,.1);
   border-radius:12px;
-  margin-top:8px;
+  padding:12px;
+  margin-top:10px;
 }
-.small {
-  font-size:13px;
-  opacity:.75;
-}
+.lb-top{display:flex;justify-content:space-between;font-weight:800}
+.lb-sub{font-size:13px;opacity:.75;margin-top:4px}
+.small{font-size:13px;opacity:.75}
+.good{color:#5eead4}
+.warn{color:#fbbf24}
+.bad{color:#fb7185}
 </style>
 </head>
 
@@ -109,10 +102,10 @@ input {
   <div id="users" class="row hidden" style="margin-top:10px;">
     <button data-user="Michael">Michael</button>
     <button data-user="Dad">Dad</button>
-    <button data-user="Tom">Tom</button>
+    <button data-user="Brother">Brother</button>
     <button data-user="Test">Test</button>
   </div>
-  <div class="small" style="margin-top:10px;">PIN required once per day.</div>
+  <div class="small" style="margin-top:8px;">PIN required once per day</div>
 </div>
 
 <!-- APP -->
@@ -126,7 +119,7 @@ input {
     </div>
     <input type="date" id="datePicker" />
   </div>
-  <div class="small" style="margin-top:10px;">
+  <div class="small" style="margin-top:8px;">
     🔥 Streak: <span id="streakLabel">0</span>
   </div>
 </div>
@@ -150,8 +143,8 @@ input {
 </div>
 
 <div class="card">
-  <h3>Leaderboard (2026 Total)</h3>
-  <div class="small">Total pushups recorded in 2026 (all days)</div>
+  <h3>Leaderboard – 2026 Progress & Pace</h3>
+  <div class="small">Actual vs possible through selected day + projected finish</div>
   <div id="leaderboard"></div>
 </div>
 
@@ -161,261 +154,223 @@ input {
 </div>
 
 <script>
-// 🔒 Disable iOS double-tap zoom
-let lastTouchEnd = 0;
-document.addEventListener("touchend", e => {
-  const now = Date.now();
-  if (now - lastTouchEnd <= 300) e.preventDefault();
-  lastTouchEnd = now;
-}, { passive:false });
+// Prevent iOS double-tap zoom
+let lastTouchEnd=0;
+document.addEventListener("touchend",e=>{
+  const now=Date.now();
+  if(now-lastTouchEnd<=300) e.preventDefault();
+  lastTouchEnd=now;
+},{passive:false});
 
 /* ================= CONFIG ================= */
-const PIN = "2026";
-const USERS = ["Michael","Dad","Tom","Test"];
-const YEAR = 2026;
-const YEAR_START = "2026-01-01";
-const YEAR_END   = "2026-12-31";
+const PIN="2026";
+const USERS=["Michael","Dad","Brother","Test"];
+const YEAR=2026;
+const YEAR_START="2026-01-01";
+const YEAR_END="2026-12-31";
 
 /* ================= FIREBASE ================= */
 firebase.initializeApp({
-  apiKey: "AIzaSyBrSIvUhk2zmNHiA_86QtlAvO0GleNfT9Q",
-  authDomain: "pushup-challenge-edb93.firebaseapp.com",
-  projectId: "pushup-challenge-edb93",
-  storageBucket: "pushup-challenge-edb93.appspot.com",
-  messagingSenderId: "568991407340",
-  appId: "1:568991407340:web:bf9ff4bc9d480d956599c9"
+  apiKey:"AIzaSyBrSIvUhk2zmNHiA_86QtlAvO0GleNfT9Q",
+  authDomain:"pushup-challenge-edb93.firebaseapp.com",
+  projectId:"pushup-challenge-edb93",
+  storageBucket:"pushup-challenge-edb93.appspot.com",
+  messagingSenderId:"568991407340",
+  appId:"1:568991407340:web:bf9ff4bc9d480d956599c9"
 });
-const db = firebase.firestore();
+const db=firebase.firestore();
 
-/* ================= DATE HELPERS (LOCAL TIME) ================= */
-function pad2(n){ return String(n).padStart(2,"0"); }
-
-// Local YYYY-MM-DD (NOT UTC)
-function todayKeyLocal(){
-  const d = new Date();
+/* ================= DATE HELPERS ================= */
+const pad2=n=>String(n).padStart(2,"0");
+const todayKey=()=>{
+  const d=new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+};
+const dateFromKey=k=>new Date(k+"T00:00:00");
+const goalFor=k=>{
+  const d=dateFromKey(k);
+  return (d.getMonth()+1)*d.getDate();
+};
+
+/* ================= STATE ================= */
+let selectedDate=todayKey();
+let undoStack=[];
+let session=JSON.parse(localStorage.getItem("session")||"null");
+let user=session?.user||null;
+let lastPinDate=session?.date||null;
+
+/* ================= FIRESTORE ================= */
+const docId=(u,d)=>`${u.toLowerCase()}_${d}`;
+
+async function loadLog(u,d){
+  const s=await db.collection("logs").doc(docId(u,d)).get();
+  return s.exists?s.data():{count:0,done:false};
+}
+async function saveLog(u,d,log){
+  await db.collection("logs").doc(docId(u,d)).set({
+    user:u,date:d,year:YEAR,
+    count:log.count,
+    goal:goalFor(d),
+    done:!!log.done,
+    updatedAt:Date.now()
+  },{merge:true});
 }
 
-// Parse YYYY-MM-DD as local date
-function dateFromKeyLocal(key){
-  // This format is treated as local time by JS engines when using "T00:00:00"
-  return new Date(key + "T00:00:00");
-}
-
-function clampDateKeyTo2026(key){
-  if (key < YEAR_START) return YEAR_START;
-  if (key > YEAR_END) return YEAR_END;
-  return key;
-}
-
-function maxAllowedDateKey(){
-  // allow up to "today" but never beyond 2026-12-31 and never before 2026-01-01
-  const t = todayKeyLocal();
-  if (t < YEAR_START) return YEAR_START;        // (only matters if opened before 2026)
-  if (t > YEAR_END) return YEAR_END;            // (only matters if opened after 2026)
+/* ================= AGGREGATES ================= */
+function totalPossibleThrough(dateKey){
+  let t=0;
+  const d=new Date(YEAR_START+"T00:00:00");
+  const end=dateFromKey(dateKey);
+  while(d<=end){
+    t+=(d.getMonth()+1)*d.getDate();
+    d.setDate(d.getDate()+1);
+  }
   return t;
 }
 
-function goalFor(dateKey){
-  const d = dateFromKeyLocal(dateKey);
-  return (d.getMonth()+1) * d.getDate();
-}
+async function loadActualsThrough(dateKey){
+  const totals={};
+  USERS.forEach(u=>totals[u]=0);
 
-/* ================= STATE ================= */
-let selectedDate = clampDateKeyTo2026(todayKeyLocal());
-let undoStack = [];
+  const snap=await db.collection("logs")
+    .where("year","==",YEAR)
+    .get();
 
-let session = JSON.parse(localStorage.getItem("session") || "null");
-let user = session?.user || null;
-let lastPinDate = session?.date || null;
-
-/* ================= FIRESTORE HELPERS ================= */
-function docId(u, d){
-  return `${u.toLowerCase()}_${d}`;
-}
-
-async function loadLog(u, d){
-  const snap = await db.collection("logs").doc(docId(u,d)).get();
-  return snap.exists ? snap.data() : { count:0, done:false };
-}
-
-async function saveLog(u, d, log){
-  await db.collection("logs").doc(docId(u,d)).set({
-    user: u,
-    date: d,
-    year: YEAR,
-    count: log.count,
-    goal: goalFor(d),
-    done: !!log.done,
-    updatedAt: Date.now()
-  }, { merge:true });
+  snap.forEach(doc=>{
+    const r=doc.data();
+    if(r.date<=dateKey && totals[r.user]!=null){
+      totals[r.user]+=Number(r.count||0);
+    }
+  });
+  return totals;
 }
 
 async function computeStreak(u){
-  let s = 0;
-  for (let i=0; i<400; i++){
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    let key = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-
-    // streak only counts within 2026
-    if (key < YEAR_START) break;
-    if (key > YEAR_END) continue;
-
-    const snap = await db.collection("logs").doc(docId(u,key)).get();
-    if (snap.exists && snap.data().done) s++;
-    else break;
+  let s=0;
+  for(let i=0;i<400;i++){
+    const d=new Date();
+    d.setDate(d.getDate()-i);
+    const k=`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    if(k<YEAR_START) break;
+    const snap=await db.collection("logs").doc(docId(u,k)).get();
+    if(snap.exists && snap.data().done) s++; else break;
   }
   return s;
 }
 
-async function loadYearlyTotals(){
-  // Small dataset (3 people) => simplest approach: fetch 2026 logs and sum per user
-  const totals = {};
-  USERS.forEach(u => totals[u] = 0);
-
-  const snap = await db.collection("logs")
-    .where("year", "==", YEAR)
-    .get();
-
-  snap.forEach(doc => {
-    const r = doc.data();
-    if (totals[r.user] !== undefined) {
-      totals[r.user] += Number(r.count || 0);
-    }
-  });
-
-  return totals;
-}
-
 /* ================= LOGIN ================= */
-const pin = document.getElementById("pin");
-const users = document.getElementById("users");
-
-pin.oninput = () => users.classList.toggle("hidden", pin.value !== PIN);
-
-users.querySelectorAll("button").forEach(b => {
-  b.onclick = () => {
-    user = b.dataset.user;
-    localStorage.setItem("session", JSON.stringify({ user, date: todayKeyLocal() }));
+const pin=document.getElementById("pin");
+const users=document.getElementById("users");
+pin.oninput=()=>users.classList.toggle("hidden",pin.value!==PIN);
+users.querySelectorAll("button").forEach(b=>{
+  b.onclick=()=>{
+    user=b.dataset.user;
+    localStorage.setItem("session",JSON.stringify({user,date:todayKey()}));
     boot();
   };
 });
 
 /* ================= APP ================= */
-const datePicker = document.getElementById("datePicker");
+const datePicker=document.getElementById("datePicker");
+datePicker.min=YEAR_START;
+datePicker.max=todayKey();
 
-function configureDatePicker(){
-  datePicker.min = YEAR_START;
-  datePicker.max = maxAllowedDateKey();
-  // ensure selected date is within allowed range
-  if (selectedDate < YEAR_START) selectedDate = YEAR_START;
-  if (selectedDate > datePicker.max) selectedDate = datePicker.max;
-  datePicker.value = selectedDate;
-}
-
-datePicker.onchange = () => {
-  const picked = datePicker.value;
-  const max = maxAllowedDateKey();
-
-  // Hard blocks: only 2026 and not future
-  if (picked < YEAR_START || picked > YEAR_END || picked > max) {
-    datePicker.value = selectedDate; // revert
-    return;
+datePicker.onchange=()=>{
+  if(datePicker.value<YEAR_START||datePicker.value>todayKey()){
+    datePicker.value=selectedDate;return;
   }
-
-  selectedDate = picked;
-  undoStack = [];
+  selectedDate=datePicker.value;
+  undoStack=[];
   render();
 };
 
 async function boot(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  configureDatePicker();
   await render();
 }
 
 async function render(){
-  // Recompute max daily (in case midnight passes)
-  configureDatePicker();
+  if(selectedDate>todayKey()) selectedDate=todayKey();
+  datePicker.value=selectedDate;
 
-  // extra safety: never outside 2026
-  selectedDate = clampDateKeyTo2026(selectedDate);
-  if (selectedDate > datePicker.max) selectedDate = datePicker.max;
-  datePicker.value = selectedDate;
+  const log=await loadLog(user,selectedDate);
+  const goal=goalFor(selectedDate);
+  const d=dateFromKey(selectedDate);
 
-  const log = await loadLog(user, selectedDate);
-  const goal = goalFor(selectedDate);
+  document.getElementById("dateLabel").innerText=
+    d.toDateString()+(selectedDate===todayKey()?" (Today)":" (Past)");
+  document.getElementById("goalLabel").innerText=
+    `Goal: ${goal} (${d.getMonth()+1} × ${d.getDate()})`;
+  document.getElementById("count").innerText=log.count;
+  document.getElementById("progress").innerText=`${log.count} / ${goal}`;
 
-  const d = dateFromKeyLocal(selectedDate);
-  const isToday = (selectedDate === todayKeyLocal());
+  document.getElementById("streakLabel").innerText=
+    await computeStreak(user);
 
-  document.getElementById("dateLabel").innerText =
-    d.toDateString() + (isToday ? " (Today)" : " (Past)");
+  const possible=totalPossibleThrough(selectedDate);
+  const actuals=await loadActualsThrough(selectedDate);
+  const fullYearPossible=totalPossibleThrough(YEAR_END);
 
-  document.getElementById("goalLabel").innerText =
-    `Goal: ${goal} pushups (${d.getMonth()+1} × ${d.getDate()})`;
+  const lb=document.getElementById("leaderboard");
+  lb.innerHTML="";
 
-  document.getElementById("count").innerText = log.count;
-  document.getElementById("progress").innerText = `${log.count} / ${goal}`;
+  USERS.map(u=>{
+    const actual=actuals[u]||0;
+    const pct=possible?actual/possible:0;
+    const projected=Math.round(pct*fullYearPossible);
 
-  const s = await computeStreak(user);
-  document.getElementById("streakLabel").innerText = s;
-
-  // Yearly totals leaderboard
-  const totals = await loadYearlyTotals();
-  const rows = USERS.map(u => ({ user:u, total: totals[u] || 0 }));
-  rows.sort((a,b) => b.total - a.total);
-
-  const lb = document.getElementById("leaderboard");
-  lb.innerHTML = "";
-  rows.forEach((r, idx) => {
-    const div = document.createElement("div");
-    div.className = "lb";
-    div.innerHTML = `<b>${idx+1}. ${r.user}</b><span>${r.total.toLocaleString()}</span>`;
+    return {u,actual,pct,projected};
+  })
+  .sort((a,b)=>b.actual-a.actual)
+  .forEach((r,i)=>{
+    const div=document.createElement("div");
+    div.className="lb";
+    div.innerHTML=`
+      <div class="lb-top">
+        <span>${i+1}. ${r.u}</span>
+        <span>${r.actual.toLocaleString()} / ${possible.toLocaleString()}</span>
+      </div>
+      <div class="lb-sub">
+        ${(r.pct*100).toFixed(1)}% complete •
+        Pace: ${r.projected.toLocaleString()} / ${fullYearPossible.toLocaleString()}
+      </div>`;
     lb.appendChild(div);
   });
 }
 
 /* ================= ACTIONS ================= */
 async function add(n){
-  const log = await loadLog(user, selectedDate);
-  log.count = Number(log.count || 0) + n;
+  const log=await loadLog(user,selectedDate);
+  log.count+=n;
   undoStack.push(n);
-  await saveLog(user, selectedDate, log);
+  await saveLog(user,selectedDate,log);
   render();
 }
-
 async function undo(){
-  const n = undoStack.pop();
-  if (!n) return;
-  const log = await loadLog(user, selectedDate);
-  log.count = Math.max(0, Number(log.count || 0) - n);
-  await saveLog(user, selectedDate, log);
+  const n=undoStack.pop();
+  if(!n) return;
+  const log=await loadLog(user,selectedDate);
+  log.count=Math.max(0,log.count-n);
+  await saveLog(user,selectedDate,log);
   render();
 }
-
 async function finish(){
-  const log = await loadLog(user, selectedDate);
-  if (Number(log.count || 0) >= goalFor(selectedDate)) {
-    log.done = true;
-    await saveLog(user, selectedDate, log);
+  const log=await loadLog(user,selectedDate);
+  if(log.count>=goalFor(selectedDate)){
+    log.done=true;
+    await saveLog(user,selectedDate,log);
   }
   render();
 }
-
 function logout(){
   localStorage.removeItem("session");
   location.reload();
 }
 
-/* ================= AUTO LOGIN (PIN ONCE PER DAY) ================= */
-if (user && lastPinDate === todayKeyLocal()) {
-  boot();
-}
+/* ================= AUTO LOGIN ================= */
+if(user && lastPinDate===todayKey()) boot();
 </script>
 
 </body>
 </html>
-
