@@ -13,13 +13,14 @@
 <meta name="apple-mobile-web-app-title" content="Push-Up 2026" />
 <meta name="theme-color" content="#0b0f14" />
 
+<!-- Firebase (compat for single-file app) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 
 <style>
 html,body{
   margin:0;
-  font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
   background:#0b0f14;
   color:#eaf0ff;
   touch-action:manipulation;
@@ -45,6 +46,8 @@ header{
 .row{display:flex;gap:10px;align-items:center}
 .space{justify-content:space-between}
 .hidden{display:none}
+.small{font-size:13px;opacity:.75}
+
 input{
   padding:10px;
   border-radius:12px;
@@ -74,6 +77,7 @@ button{
 @media(max-width:600px){
   .grid{grid-template-columns:repeat(3,1fr)}
 }
+
 .lb{
   border:1px solid rgba(255,255,255,.1);
   border-radius:12px;
@@ -82,10 +86,26 @@ button{
 }
 .lb-top{display:flex;justify-content:space-between;font-weight:800}
 .lb-sub{font-size:13px;opacity:.75;margin-top:4px}
-.small{font-size:13px;opacity:.75}
-.good{color:#5eead4}
-.warn{color:#fbbf24}
-.bad{color:#fb7185}
+
+.calendar{
+  display:grid;
+  grid-template-columns:repeat(31,1fr);
+  gap:4px;
+  margin-top:12px;
+}
+.day{
+  border-radius:6px;
+  padding:4px;
+  font-size:11px;
+  text-align:center;
+  border:1px solid rgba(255,255,255,.1);
+}
+.day.today{outline:2px solid #5eead4}
+.day.empty{background:transparent;border:none}
+.day.low{background:#1f2937}
+.day.mid{background:#2563eb}
+.day.high{background:#16a34a}
+.day.full{background:#22c55e;font-weight:800}
 </style>
 </head>
 
@@ -119,7 +139,8 @@ button{
     </div>
     <input type="date" id="datePicker" />
   </div>
-  
+</div>
+
 <div class="card">
   <div class="big" id="count">0</div>
   <div id="progress" class="small" style="text-align:center;"></div>
@@ -144,13 +165,21 @@ button{
   <div id="leaderboard"></div>
 </div>
 
+<button onclick="toggleCalendar()">📅 View Calendar</button>
+
+<div id="calendarCard" class="card hidden">
+  <h3>2026 Push-Up Calendar</h3>
+  <div class="small">Each square = one day • number = pushups completed</div>
+  <div id="calendarGrid" class="calendar"></div>
+</div>
+
 <button onclick="logout()">Switch User</button>
 
 </div>
 </div>
 
 <script>
-// Prevent iOS double-tap zoom
+// Disable iOS double-tap zoom
 let lastTouchEnd=0;
 document.addEventListener("touchend",e=>{
   const now=Date.now();
@@ -241,8 +270,6 @@ async function loadActualsThrough(dateKey){
   return totals;
 }
 
-
-
 /* ================= LOGIN ================= */
 const pin=document.getElementById("pin");
 const users=document.getElementById("users");
@@ -301,7 +328,6 @@ async function render(){
     const actual=actuals[u]||0;
     const pct=possible?actual/possible:0;
     const projected=Math.round(pct*fullYearPossible);
-
     return {u,actual,pct,projected};
   })
   .sort((a,b)=>b.actual-a.actual)
@@ -319,6 +345,56 @@ async function render(){
       </div>`;
     lb.appendChild(div);
   });
+}
+
+/* ================= CALENDAR ================= */
+async function toggleCalendar(){
+  const c=document.getElementById("calendarCard");
+  c.classList.toggle("hidden");
+  if(!c.classList.contains("hidden")) renderCalendar();
+}
+
+async function renderCalendar(){
+  const grid=document.getElementById("calendarGrid");
+  grid.innerHTML="";
+
+  const snap=await db.collection("logs")
+    .where("year","==",YEAR)
+    .where("user","==",user)
+    .get();
+
+  const logs={};
+  snap.forEach(d=>logs[d.data().date]=d.data().count||0);
+
+  const today=todayKey();
+  const cur=new Date(YEAR_START+"T00:00:00");
+  const end=new Date(YEAR_END+"T00:00:00");
+
+  while(cur<=end){
+    const key=`${cur.getFullYear()}-${pad2(cur.getMonth()+1)}-${pad2(cur.getDate())}`;
+    const cell=document.createElement("div");
+
+    if(key>today){
+      cell.className="day empty";
+      grid.appendChild(cell);
+      cur.setDate(cur.getDate()+1);
+      continue;
+    }
+
+    const done=logs[key]||0;
+    const goal=goalFor(key);
+    const pct=goal?done/goal:0;
+
+    let cls="day low";
+    if(pct>=1) cls="day full";
+    else if(pct>=.75) cls="day high";
+    else if(pct>=.25) cls="day mid";
+
+    cell.className=cls+(key===today?" today":"");
+    cell.innerHTML=`<div>${cur.getDate()}</div><div>${done}</div>`;
+    grid.appendChild(cell);
+    cur.setDate(cur.getDate()+1);
+  }
 }
 
 /* ================= ACTIONS ================= */
@@ -356,5 +432,3 @@ if(user && lastPinDate===todayKey()) boot();
 
 </body>
 </html>
-
-
