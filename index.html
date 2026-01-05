@@ -109,7 +109,8 @@ input {
   <div id="users" class="row hidden" style="margin-top:10px;">
     <button data-user="Michael">Michael</button>
     <button data-user="Dad">Dad</button>
-    <button data-user="Brother">Brother</button>
+    <button data-user="Tom">Tom</button>
+    <button data-user="Test">Test</button>
   </div>
   <div class="small" style="margin-top:10px;">PIN required once per day.</div>
 </div>
@@ -170,7 +171,7 @@ document.addEventListener("touchend", e => {
 
 /* ================= CONFIG ================= */
 const PIN = "2026";
-const USERS = ["Michael","Dad","Brother"];
+const USERS = ["Michael","Dad","Tom","Test"];
 const YEAR = 2026;
 const YEAR_START = "2026-01-01";
 const YEAR_END   = "2026-12-31";
@@ -417,3 +418,4 @@ if (user && lastPinDate === todayKeyLocal()) {
 
 </body>
 </html>
+
