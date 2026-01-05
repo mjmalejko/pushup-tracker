@@ -27,24 +27,20 @@ html, body {
   touch-action: manipulation;
   overscroll-behavior: none;
 }
-
 button {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-
 header {
   padding:14px 16px;
   border-bottom:1px solid rgba(255,255,255,.1);
   font-weight:900;
 }
-
 .container {
   max-width:720px;
   margin:20px auto;
   padding:0 14px;
 }
-
 .card {
   background:#121926;
   border:1px solid rgba(255,255,255,.1);
@@ -52,7 +48,6 @@ header {
   padding:18px;
   margin-bottom:16px;
 }
-
 .row { display:flex; gap:10px; align-items:center; }
 .space { justify-content:space-between; }
 .hidden { display:none; }
@@ -66,7 +61,6 @@ button {
   font-weight:800;
   cursor:pointer;
 }
-
 input {
   padding:10px;
   border-radius:12px;
@@ -74,13 +68,11 @@ input {
   background:#0f1625;
   color:#fff;
 }
-
 .big {
   font-size:56px;
   font-weight:900;
   text-align:center;
 }
-
 .grid {
   display:grid;
   grid-template-columns:repeat(5,1fr);
@@ -89,7 +81,6 @@ input {
 @media(max-width:600px){
   .grid { grid-template-columns:repeat(3,1fr); }
 }
-
 .lb {
   display:flex;
   justify-content:space-between;
@@ -97,6 +88,10 @@ input {
   border:1px solid rgba(255,255,255,.1);
   border-radius:12px;
   margin-top:8px;
+}
+.small {
+  font-size:13px;
+  opacity:.75;
 }
 </style>
 </head>
@@ -111,11 +106,12 @@ input {
 <div class="card" id="login">
   <h2>Enter PIN</h2>
   <input id="pin" type="password" placeholder="Shared PIN" />
-  <div id="users" class="row hidden">
+  <div id="users" class="row hidden" style="margin-top:10px;">
     <button data-user="Michael">Michael</button>
     <button data-user="Dad">Dad</button>
     <button data-user="Brother">Brother</button>
   </div>
+  <div class="small" style="margin-top:10px;">PIN required once per day.</div>
 </div>
 
 <!-- APP -->
@@ -125,17 +121,20 @@ input {
   <div class="row space">
     <div>
       <h2 id="dateLabel"></h2>
-      <div id="goalLabel"></div>
+      <div id="goalLabel" class="small"></div>
     </div>
     <input type="date" id="datePicker" />
+  </div>
+  <div class="small" style="margin-top:10px;">
+    🔥 Streak: <span id="streakLabel">0</span>
   </div>
 </div>
 
 <div class="card">
   <div class="big" id="count">0</div>
-  <div id="progress"></div>
+  <div id="progress" class="small" style="text-align:center;"></div>
 
-  <div class="grid">
+  <div class="grid" style="margin-top:12px;">
     <button onclick="add(1)">+1</button>
     <button onclick="add(5)">+5</button>
     <button onclick="add(10)">+10</button>
@@ -143,14 +142,15 @@ input {
     <button onclick="add(50)">+50</button>
   </div>
 
-  <div class="row">
+  <div class="row" style="margin-top:12px;">
     <button onclick="undo()">Undo</button>
     <button onclick="finish()">Done ✅</button>
   </div>
 </div>
 
 <div class="card">
-  <h3>Leaderboard</h3>
+  <h3>Leaderboard (2026 Total)</h3>
+  <div class="small">Total pushups recorded in 2026 (all days)</div>
   <div id="leaderboard"></div>
 </div>
 
@@ -171,6 +171,9 @@ document.addEventListener("touchend", e => {
 /* ================= CONFIG ================= */
 const PIN = "2026";
 const USERS = ["Michael","Dad","Brother"];
+const YEAR = 2026;
+const YEAR_START = "2026-01-01";
+const YEAR_END   = "2026-12-31";
 
 /* ================= FIREBASE ================= */
 firebase.initializeApp({
@@ -183,134 +186,233 @@ firebase.initializeApp({
 });
 const db = firebase.firestore();
 
+/* ================= DATE HELPERS (LOCAL TIME) ================= */
+function pad2(n){ return String(n).padStart(2,"0"); }
+
+// Local YYYY-MM-DD (NOT UTC)
+function todayKeyLocal(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+// Parse YYYY-MM-DD as local date
+function dateFromKeyLocal(key){
+  // This format is treated as local time by JS engines when using "T00:00:00"
+  return new Date(key + "T00:00:00");
+}
+
+function clampDateKeyTo2026(key){
+  if (key < YEAR_START) return YEAR_START;
+  if (key > YEAR_END) return YEAR_END;
+  return key;
+}
+
+function maxAllowedDateKey(){
+  // allow up to "today" but never beyond 2026-12-31 and never before 2026-01-01
+  const t = todayKeyLocal();
+  if (t < YEAR_START) return YEAR_START;        // (only matters if opened before 2026)
+  if (t > YEAR_END) return YEAR_END;            // (only matters if opened after 2026)
+  return t;
+}
+
+function goalFor(dateKey){
+  const d = dateFromKeyLocal(dateKey);
+  return (d.getMonth()+1) * d.getDate();
+}
+
 /* ================= STATE ================= */
-const todayKey = () => new Date().toISOString().slice(0,10);
-let selectedDate = todayKey();
+let selectedDate = clampDateKeyTo2026(todayKeyLocal());
 let undoStack = [];
 
 let session = JSON.parse(localStorage.getItem("session") || "null");
 let user = session?.user || null;
 let lastPinDate = session?.date || null;
 
-/* ================= HELPERS ================= */
-const goalFor = d => {
-  const x = new Date(d);
-  return (x.getMonth()+1) * x.getDate();
-};
-const docId = (u,d) => `${u.toLowerCase()}_${d}`;
+/* ================= FIRESTORE HELPERS ================= */
+function docId(u, d){
+  return `${u.toLowerCase()}_${d}`;
+}
 
-async function loadLog(u,d){
+async function loadLog(u, d){
   const snap = await db.collection("logs").doc(docId(u,d)).get();
   return snap.exists ? snap.data() : { count:0, done:false };
 }
-async function saveLog(u,d,log){
+
+async function saveLog(u, d, log){
   await db.collection("logs").doc(docId(u,d)).set({
-    user:u, date:d, count:log.count,
-    goal:goalFor(d), done:log.done || false,
-    updatedAt:Date.now()
+    user: u,
+    date: d,
+    year: YEAR,
+    count: log.count,
+    goal: goalFor(d),
+    done: !!log.done,
+    updatedAt: Date.now()
   }, { merge:true });
 }
-async function streak(u){
-  let s=0;
-  for(let i=0;i<400;i++){
-    let d=new Date(); d.setDate(d.getDate()-i);
-    let k=d.toISOString().slice(0,10);
-    let snap=await db.collection("logs").doc(docId(u,k)).get();
-    if(snap.exists && snap.data().done) s++; else break;
+
+async function computeStreak(u){
+  let s = 0;
+  for (let i=0; i<400; i++){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    let key = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+
+    // streak only counts within 2026
+    if (key < YEAR_START) break;
+    if (key > YEAR_END) continue;
+
+    const snap = await db.collection("logs").doc(docId(u,key)).get();
+    if (snap.exists && snap.data().done) s++;
+    else break;
   }
   return s;
 }
 
+async function loadYearlyTotals(){
+  // Small dataset (3 people) => simplest approach: fetch 2026 logs and sum per user
+  const totals = {};
+  USERS.forEach(u => totals[u] = 0);
+
+  const snap = await db.collection("logs")
+    .where("year", "==", YEAR)
+    .get();
+
+  snap.forEach(doc => {
+    const r = doc.data();
+    if (totals[r.user] !== undefined) {
+      totals[r.user] += Number(r.count || 0);
+    }
+  });
+
+  return totals;
+}
+
 /* ================= LOGIN ================= */
-const pin=document.getElementById("pin");
-const users=document.getElementById("users");
+const pin = document.getElementById("pin");
+const users = document.getElementById("users");
 
-pin.oninput=()=>users.classList.toggle("hidden",pin.value!==PIN);
+pin.oninput = () => users.classList.toggle("hidden", pin.value !== PIN);
 
-users.querySelectorAll("button").forEach(b=>{
-  b.onclick=()=>{
-    user=b.dataset.user;
-    localStorage.setItem("session",
-      JSON.stringify({ user, date:todayKey() })
-    );
+users.querySelectorAll("button").forEach(b => {
+  b.onclick = () => {
+    user = b.dataset.user;
+    localStorage.setItem("session", JSON.stringify({ user, date: todayKeyLocal() }));
     boot();
   };
 });
 
 /* ================= APP ================= */
-const datePicker=document.getElementById("datePicker");
-datePicker.max=todayKey();
-datePicker.value=selectedDate;
+const datePicker = document.getElementById("datePicker");
 
-datePicker.onchange=()=>{
-  if(datePicker.value>todayKey()) return;
-  selectedDate=datePicker.value;
-  undoStack=[];
+function configureDatePicker(){
+  datePicker.min = YEAR_START;
+  datePicker.max = maxAllowedDateKey();
+  // ensure selected date is within allowed range
+  if (selectedDate < YEAR_START) selectedDate = YEAR_START;
+  if (selectedDate > datePicker.max) selectedDate = datePicker.max;
+  datePicker.value = selectedDate;
+}
+
+datePicker.onchange = () => {
+  const picked = datePicker.value;
+  const max = maxAllowedDateKey();
+
+  // Hard blocks: only 2026 and not future
+  if (picked < YEAR_START || picked > YEAR_END || picked > max) {
+    datePicker.value = selectedDate; // revert
+    return;
+  }
+
+  selectedDate = picked;
+  undoStack = [];
   render();
 };
 
 async function boot(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  render();
+  configureDatePicker();
+  await render();
 }
 
 async function render(){
-  if(selectedDate>todayKey()){
-    selectedDate=todayKey();
-    datePicker.value=selectedDate;
-  }
+  // Recompute max daily (in case midnight passes)
+  configureDatePicker();
 
-  const log=await loadLog(user,selectedDate);
-  const goal=goalFor(selectedDate);
+  // extra safety: never outside 2026
+  selectedDate = clampDateKeyTo2026(selectedDate);
+  if (selectedDate > datePicker.max) selectedDate = datePicker.max;
+  datePicker.value = selectedDate;
+
+  const log = await loadLog(user, selectedDate);
+  const goal = goalFor(selectedDate);
+
+  const d = dateFromKeyLocal(selectedDate);
+  const isToday = (selectedDate === todayKeyLocal());
 
   document.getElementById("dateLabel").innerText =
-    new Date(selectedDate).toDateString() +
-    (selectedDate===todayKey() ? " (Today)" : " (Past)");
+    d.toDateString() + (isToday ? " (Today)" : " (Past)");
 
-  document.getElementById("goalLabel").innerText=`Goal: ${goal}`;
-  document.getElementById("count").innerText=log.count;
-  document.getElementById("progress").innerText=`${log.count} / ${goal}`;
+  document.getElementById("goalLabel").innerText =
+    `Goal: ${goal} pushups (${d.getMonth()+1} × ${d.getDate()})`;
 
-  const lb=document.getElementById("leaderboard");
-  lb.innerHTML="";
-  for(const u of USERS){
-    const s=await loadLog(u,selectedDate);
-    lb.innerHTML+=`<div class="lb"><b>${u}</b><span>${s.count}/${goal}</span></div>`;
-  }
+  document.getElementById("count").innerText = log.count;
+  document.getElementById("progress").innerText = `${log.count} / ${goal}`;
+
+  const s = await computeStreak(user);
+  document.getElementById("streakLabel").innerText = s;
+
+  // Yearly totals leaderboard
+  const totals = await loadYearlyTotals();
+  const rows = USERS.map(u => ({ user:u, total: totals[u] || 0 }));
+  rows.sort((a,b) => b.total - a.total);
+
+  const lb = document.getElementById("leaderboard");
+  lb.innerHTML = "";
+  rows.forEach((r, idx) => {
+    const div = document.createElement("div");
+    div.className = "lb";
+    div.innerHTML = `<b>${idx+1}. ${r.user}</b><span>${r.total.toLocaleString()}</span>`;
+    lb.appendChild(div);
+  });
 }
 
 /* ================= ACTIONS ================= */
 async function add(n){
-  const log=await loadLog(user,selectedDate);
-  log.count+=n;
+  const log = await loadLog(user, selectedDate);
+  log.count = Number(log.count || 0) + n;
   undoStack.push(n);
-  await saveLog(user,selectedDate,log);
+  await saveLog(user, selectedDate, log);
   render();
 }
+
 async function undo(){
-  const n=undoStack.pop();
-  if(!n) return;
-  const log=await loadLog(user,selectedDate);
-  log.count=Math.max(0,log.count-n);
-  await saveLog(user,selectedDate,log);
+  const n = undoStack.pop();
+  if (!n) return;
+  const log = await loadLog(user, selectedDate);
+  log.count = Math.max(0, Number(log.count || 0) - n);
+  await saveLog(user, selectedDate, log);
   render();
 }
+
 async function finish(){
-  const log=await loadLog(user,selectedDate);
-  if(log.count>=goalFor(selectedDate)){
-    log.done=true;
-    await saveLog(user,selectedDate,log);
+  const log = await loadLog(user, selectedDate);
+  if (Number(log.count || 0) >= goalFor(selectedDate)) {
+    log.done = true;
+    await saveLog(user, selectedDate, log);
   }
   render();
 }
+
 function logout(){
   localStorage.removeItem("session");
   location.reload();
 }
 
-/* ================= AUTO LOGIN ================= */
-if(user && lastPinDate===todayKey()) boot();
+/* ================= AUTO LOGIN (PIN ONCE PER DAY) ================= */
+if (user && lastPinDate === todayKeyLocal()) {
+  boot();
+}
 </script>
 
 </body>
