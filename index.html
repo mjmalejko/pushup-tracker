@@ -11,7 +11,6 @@
 <meta name="apple-mobile-web-app-title" content="Push-Up 2026" />
 <meta name="theme-color" content="#0b0f14" />
 
-<!-- Firebase (compat for single-file apps) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 
@@ -76,7 +75,7 @@ button{
 .lb-top{ display:flex; justify-content:space-between; font-weight:900; gap:12px; }
 .lb-sub{ font-size:13px; opacity:.75; margin-top:6px; line-height:1.25; }
 
-/* --- Calendar Month View (stable, no overflow) --- */
+/* Calendar */
 .calendar-wrap{
   margin-top:12px;
   border:1px solid rgba(255,255,255,.1);
@@ -104,9 +103,9 @@ button{
   border:1px solid rgba(255,255,255,.10);
   background:#111827;
   padding:8px;
-  min-height:92px;           /* consistent tile height */
+  min-height:92px;
   box-sizing:border-box;
-  overflow:hidden;           /* prevents “outside box” bleed */
+  overflow:hidden;
 }
 .day.empty{
   background:transparent;
@@ -126,9 +125,6 @@ button{
   font-size:11px;
   line-height:1.1;
   opacity:.28;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
 }
 .person.done{
   opacity:1;
@@ -143,98 +139,93 @@ button{
 
 <div class="container">
 
-  <!-- LOGIN -->
-  <div class="card" id="login">
-    <h2>Enter PIN</h2>
-    <input id="pin" type="password" placeholder="Shared PIN" />
-    <div id="users" class="row hidden" style="margin-top:10px;">
-      <button data-user="Michael">Michael</button>
-      <button data-user="Dad">Dad</button>
-      <button data-user="Tom">Tom</button>
-    </div>
-    <div class="small" style="margin-top:8px;">PIN required once per day</div>
+<!-- LOGIN -->
+<div class="card" id="login">
+  <h2>Enter PIN</h2>
+  <input id="pin" type="password" placeholder="Shared PIN" />
+  <div id="users" class="row hidden" style="margin-top:10px;">
+    <button data-user="Michael">Michael</button>
+    <button data-user="Dad">Dad</button>
+    <button data-user="Tom">Tom</button>
   </div>
+  <div class="small" style="margin-top:8px;">PIN required once per day</div>
+</div>
 
-  <!-- APP -->
-  <div id="app" class="hidden">
+<!-- APP -->
+<div id="app" class="hidden">
 
-    <div class="card">
-      <div class="row space">
-        <div>
-          <h2 id="dateLabel"></h2>
-          <div id="goalLabel" class="small"></div>
-        </div>
-        <input type="date" id="datePicker" />
-      </div>
+<div class="card">
+  <div class="row space">
+    <div>
+      <h2 id="dateLabel"></h2>
+      <div id="goalLabel" class="small"></div>
     </div>
-
-    <div class="card">
-      <div class="big" id="count">0</div>
-      <div id="progress" class="small" style="text-align:center;"></div>
-
-      <div class="grid" style="margin-top:12px;">
-        <button onclick="add(1)">+1</button>
-        <button onclick="add(5)">+5</button>
-        <button onclick="add(10)">+10</button>
-        <button onclick="add(20)">+20</button>
-        <button onclick="add(50)">+50</button>
-      </div>
-
-      <div class="row" style="margin-top:12px;">
-        <button onclick="undo()">Undo</button>
-        <button onclick="finish()">Done ✅</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Leaderboard – 2026 Totals & Max Projection</h3>
-      <div class="small">Completed so far + remaining required days (month × day)</div>
-      <div id="leaderboard"></div>
-    </div>
-
-    <button onclick="toggleCalendar()">📅 View Calendar</button>
-
-    <div id="calendarCard" class="card hidden">
-      <div class="row space">
-        <div>
-          <h3 style="margin:0;">2026 Calendar (Monthly)</h3>
-          <div class="small">Names turn green when that day’s goal is completed</div>
-        </div>
-        <div class="row" style="gap:8px;">
-          <select id="monthSelect"></select>
-        </div>
-      </div>
-
-      <div class="calendar-wrap">
-        <div class="cal-weekdays">
-          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-        </div>
-        <div id="calendarGrid" class="calendar"></div>
-      </div>
-    </div>
-
-    <button onclick="logout()">Switch User</button>
-
+    <input type="date" id="datePicker" />
   </div>
 </div>
 
-<script>
-// Disable iOS double-tap zoom
-let lastTouchEnd=0;
-document.addEventListener("touchend",e=>{
-  const now=Date.now();
-  if(now-lastTouchEnd<=300) e.preventDefault();
-  lastTouchEnd=now;
-},{passive:false});
+<div class="card">
+  <div class="big" id="count">0</div>
+  <div id="progress" class="small" style="text-align:center;"></div>
 
-/* ================= CONFIG ================= */
+  <div class="grid" style="margin-top:12px;">
+    <button onclick="add(1)">+1</button>
+    <button onclick="add(5)">+5</button>
+    <button onclick="add(10)">+10</button>
+    <button onclick="add(20)">+20</button>
+    <button onclick="add(50)">+50</button>
+  </div>
+
+  <div class="row" style="margin-top:12px;">
+    <button onclick="undo()">Undo</button>
+    <button onclick="finish()">Done ✅</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Leaderboard – 2026 Totals & Max Projection</h3>
+  <div class="small">Completed so far + remaining required days</div>
+  <div id="leaderboard"></div>
+</div>
+
+<button onclick="toggleCalendar()">📅 View Calendar</button>
+
+<div id="calendarCard" class="card hidden">
+  <div class="row space">
+    <div>
+      <h3 style="margin:0;">2026 Calendar (Monthly)</h3>
+      <div class="small">Names turn green when daily goal is completed</div>
+    </div>
+    <select id="monthSelect"></select>
+  </div>
+
+  <div class="calendar-wrap">
+    <div class="cal-weekdays">
+      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    </div>
+    <div id="calendarGrid" class="calendar"></div>
+  </div>
+</div>
+
+<button onclick="logout()">Switch User</button>
+</div>
+</div>
+
+<script>
 const PIN="2026";
 const USERS=["Michael","Dad","Tom"];
 const YEAR=2026;
 const YEAR_START="2026-01-01";
 const YEAR_END="2026-12-31";
 
-/* ================= FIREBASE ================= */
+/* Calendar display abbreviations */
+const CAL_NAME = {
+  Michael: "MM",
+  Tom: "TM",
+  Dad: "Dad"
+};
+
+/* Firebase */
 firebase.initializeApp({
   apiKey:"AIzaSyBrSIvUhk2zmNHiA_86QtlAvO0GleNfT9Q",
   authDomain:"pushup-challenge-edb93.firebaseapp.com",
@@ -245,69 +236,24 @@ firebase.initializeApp({
 });
 const db=firebase.firestore();
 
-/* ================= HELPERS ================= */
+/* Helpers */
 const pad2=n=>String(n).padStart(2,"0");
-const todayKey=()=>{
-  const d=new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-};
+const todayKey=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`};
 const dateFromKey=k=>new Date(k+"T00:00:00");
 const keyFromDate=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-const goalFor=k=>{ const d=dateFromKey(k); return (d.getMonth()+1)*d.getDate(); };
+const goalFor=k=>{const d=dateFromKey(k);return (d.getMonth()+1)*d.getDate()};
 const docId=(u,d)=>`${u.toLowerCase()}_${d}`;
 
-function totalPossibleBetween(startKey,endKey){
-  if(startKey > endKey) return 0;
-  let t=0;
-  const d=dateFromKey(startKey);
-  const end=dateFromKey(endKey);
-  while(d<=end){
-    t+=(d.getMonth()+1)*d.getDate();
-    d.setDate(d.getDate()+1);
-  }
-  return t;
-}
-
-/* ================= STATE ================= */
+/* State */
 let selectedDate=todayKey();
 let undoStack=[];
 let session=JSON.parse(localStorage.getItem("session")||"null");
 let user=session?.user||null;
 let lastPinDate=session?.date||null;
-
 let calendarOpen=false;
-let calendarMonth=0; // 0=Jan ... 11=Dec
+let calendarMonth=0;
 
-/* ================= FIRESTORE ================= */
-async function loadLog(u,d){
-  const s=await db.collection("logs").doc(docId(u,d)).get();
-  return s.exists ? s.data() : {count:0,done:false};
-}
-async function saveLog(u,d,log){
-  await db.collection("logs").doc(docId(u,d)).set({
-    user:u, date:d, year:YEAR,
-    count:log.count,
-    goal:goalFor(d),
-    done:!!log.done,
-    updatedAt:Date.now()
-  },{merge:true});
-}
-
-async function loadActualsThrough(dateKey){
-  const totals={};
-  USERS.forEach(u=>totals[u]=0);
-
-  const snap=await db.collection("logs").where("year","==",YEAR).get();
-  snap.forEach(doc=>{
-    const r=doc.data();
-    if(r.date<=dateKey && totals[r.user]!=null){
-      totals[r.user]+=Number(r.count||0);
-    }
-  });
-  return totals;
-}
-
-/* ================= LOGIN ================= */
+/* Login */
 const pin=document.getElementById("pin");
 const users=document.getElementById("users");
 pin.oninput=()=>users.classList.toggle("hidden",pin.value!==PIN);
@@ -319,223 +265,165 @@ users.querySelectorAll("button").forEach(b=>{
   };
 });
 
-/* ================= DATE PICKER ================= */
+/* Date picker */
 const datePicker=document.getElementById("datePicker");
 datePicker.min=YEAR_START;
 datePicker.max=todayKey();
-
 datePicker.onchange=()=>{
-  const v=datePicker.value;
-  if(v<YEAR_START || v>todayKey()){
-    datePicker.value=selectedDate;
-    return;
+  if(datePicker.value<YEAR_START||datePicker.value>todayKey()){
+    datePicker.value=selectedDate;return;
   }
-  selectedDate=v;
+  selectedDate=datePicker.value;
   undoStack=[];
   render();
 };
 
-/* ================= MONTH SELECT ================= */
+/* Month selector */
 const monthSelect=document.getElementById("monthSelect");
-const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-monthNames.forEach((m,i)=>{
-  const opt=document.createElement("option");
-  opt.value=String(i);
-  opt.textContent=`${m} ${YEAR}`;
-  monthSelect.appendChild(opt);
+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+.forEach((m,i)=>{
+  const o=document.createElement("option");
+  o.value=i;
+  o.textContent=`${m} ${YEAR}`;
+  monthSelect.appendChild(o);
 });
 monthSelect.onchange=()=>{
   calendarMonth=parseInt(monthSelect.value,10);
   if(calendarOpen) renderCalendarMonth();
 };
 
-/* ================= RENDER ================= */
+/* Boot */
 async function boot(){
-  // default calendar month = selected date month
-  calendarMonth = dateFromKey(selectedDate).getMonth();
-  monthSelect.value=String(calendarMonth);
-
+  calendarMonth=dateFromKey(selectedDate).getMonth();
+  monthSelect.value=calendarMonth;
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   render();
 }
 
+/* Render */
 async function render(){
-  // clamp date (no future)
   if(selectedDate>todayKey()) selectedDate=todayKey();
-  datePicker.max=todayKey();
   datePicker.value=selectedDate;
 
-  // daily card
   const log=await loadLog(user,selectedDate);
   const goal=goalFor(selectedDate);
   const d=dateFromKey(selectedDate);
 
   document.getElementById("dateLabel").innerText=
-    d.toDateString() + (selectedDate===todayKey() ? " (Today)" : " (Past)");
-  document.getElementById("goalLabel").innerText=`Goal: ${goal} (${d.getMonth()+1} × ${d.getDate()})`;
+    d.toDateString()+(selectedDate===todayKey()?" (Today)":" (Past)");
+  document.getElementById("goalLabel").innerText=`Goal: ${goal}`;
   document.getElementById("count").innerText=log.count;
   document.getElementById("progress").innerText=`${log.count} / ${goal}`;
 
-  // leaderboard ALWAYS renders
   await renderLeaderboard();
-
-  // if calendar open, keep it refreshed
-  if(calendarOpen) await renderCalendarMonth();
+  if(calendarOpen) renderCalendarMonth();
 }
 
+/* Firestore helpers */
+async function loadLog(u,d){
+  const s=await db.collection("logs").doc(docId(u,d)).get();
+  return s.exists?s.data():{count:0,done:false};
+}
+async function saveLog(u,d,log){
+  await db.collection("logs").doc(docId(u,d)).set({
+    user:u,date:d,year:YEAR,count:log.count,goal:goalFor(d),updatedAt:Date.now()
+  },{merge:true});
+}
+
+/* Leaderboard */
 async function renderLeaderboard(){
-  const completed=await loadActualsThrough(selectedDate);
+  const totals={Michael:0,Dad:0,Tom:0};
+  const snap=await db.collection("logs").where("year","==",YEAR).get();
+  snap.forEach(doc=>{
+    const r=doc.data();
+    if(r.date<=selectedDate) totals[r.user]+=r.count||0;
+  });
 
-  // remaining required = from next day through Dec 31
-  const next=new Date(selectedDate+"T00:00:00");
-  next.setDate(next.getDate()+1);
-  const nextKey=keyFromDate(next);
-  const remainingPossible = (nextKey<=YEAR_END) ? totalPossibleBetween(nextKey,YEAR_END) : 0;
+  const next=new Date(selectedDate+"T00:00:00");next.setDate(next.getDate()+1);
+  const remaining = next<=new Date(YEAR_END) ? totalPossibleBetween(keyFromDate(next),YEAR_END) : 0;
+  const full = totalPossibleBetween(YEAR_START,YEAR_END);
 
-  const fullYearPossible = totalPossibleBetween(YEAR_START,YEAR_END);
-
-  const rows = USERS.map(u=>{
-    const actual = completed[u] || 0;
-    const projected = actual + remainingPossible;
-    return {u, actual, projected};
+  const rows=USERS.map(u=>{
+    return {u,actual:totals[u],projected:totals[u]+remaining};
   }).sort((a,b)=>b.actual-a.actual);
 
   const lb=document.getElementById("leaderboard");
   lb.innerHTML="";
-
   rows.forEach((r,i)=>{
-    const div=document.createElement("div");
-    div.className="lb";
-    div.innerHTML=`
-      <div class="lb-top">
-        <span>${i+1}. ${r.u}</span>
-        <span>${r.actual.toLocaleString()}</span>
-      </div>
-      <div class="lb-sub">
-        Projected finish (perfect rest of year):
-        ${r.projected.toLocaleString()} / ${fullYearPossible.toLocaleString()}
-      </div>
+    const d=document.createElement("div");
+    d.className="lb";
+    d.innerHTML=`
+      <div class="lb-top"><span>${i+1}. ${r.u}</span><span>${r.actual}</span></div>
+      <div class="lb-sub">Projected: ${r.projected} / ${full}</div>
     `;
-    lb.appendChild(div);
+    lb.appendChild(d);
   });
 }
 
-/* ================= CALENDAR ================= */
+/* Calendar */
 function toggleCalendar(){
   calendarOpen=!calendarOpen;
-  document.getElementById("calendarCard").classList.toggle("hidden", !calendarOpen);
-
-  if(calendarOpen){
-    // sync month selector to current selection
-    calendarMonth = dateFromKey(selectedDate).getMonth();
-    monthSelect.value=String(calendarMonth);
-    renderCalendarMonth();
-  }
+  document.getElementById("calendarCard").classList.toggle("hidden",!calendarOpen);
+  if(calendarOpen) renderCalendarMonth();
 }
 
 async function renderCalendarMonth(){
   const grid=document.getElementById("calendarGrid");
   grid.innerHTML="";
-
-  const today=todayKey();
-  const monthStart=new Date(YEAR, calendarMonth, 1);
-  const monthEnd=new Date(YEAR, calendarMonth+1, 0);
-  const daysInMonth=monthEnd.getDate();
-
-  // Gather logs for the month (all users) to color names correctly
-  const snap=await db.collection("logs")
-    .where("year","==",YEAR)
-    .get();
-
-  const logsByDate={};
-  snap.forEach(doc=>{
-    const r=doc.data();
-    // keep only this month for speed
-    if(r.date >= `${YEAR}-${pad2(calendarMonth+1)}-01` && r.date <= `${YEAR}-${pad2(calendarMonth+1)}-${pad2(daysInMonth)}`){
-      if(!logsByDate[r.date]) logsByDate[r.date]={};
-      logsByDate[r.date][r.user]=r.count||0;
-    }
+  const snap=await db.collection("logs").where("year","==",YEAR).get();
+  const logs={};
+  snap.forEach(d=>{
+    const r=d.data();
+    if(!logs[r.date]) logs[r.date]={};
+    logs[r.date][r.user]=r.count||0;
   });
 
-  // leading blanks (Sunday-based)
-  const firstDow = monthStart.getDay(); // 0..6
-  for(let i=0;i<firstDow;i++){
-    const empty=document.createElement("div");
-    empty.className="day empty";
-    grid.appendChild(empty);
+  const first=new Date(YEAR,calendarMonth,1);
+  const last=new Date(YEAR,calendarMonth+1,0);
+  const startDow=first.getDay();
+
+  for(let i=0;i<startDow;i++){
+    const e=document.createElement("div");
+    e.className="day empty";
+    grid.appendChild(e);
   }
 
-  // day cells
-  for(let day=1; day<=daysInMonth; day++){
-    const d=new Date(YEAR, calendarMonth, day);
+  for(let day=1;day<=last.getDate();day++){
+    const d=new Date(YEAR,calendarMonth,day);
     const key=keyFromDate(d);
-
     const cell=document.createElement("div");
-
-    // future days blank
-    if(key>today){
-      cell.className="day future";
-      grid.appendChild(cell);
-      continue;
-    }
+    if(key>todayKey()){ cell.className="day empty"; grid.appendChild(cell); continue; }
 
     const goal=goalFor(key);
-    const dayLogs=logsByDate[key] || {};
+    cell.className="day"+(key===todayKey()?" today":"");
 
-    cell.className="day" + (key===today ? " today" : "");
-
-    let html = `<div class="day-num"><span>${day}</span><span class="small">${goal}</span></div>`;
+    let html=`<div class="day-num"><span>${day}</span><span class="small">${goal}</span></div>`;
     USERS.forEach(u=>{
-      const c=dayLogs[u] || 0;
-      const done = c >= goal;
-      html += `<div class="person ${done ? "done" : ""}">${u}</div>`;
+      const done=(logs[key]?.[u]||0)>=goal;
+      html+=`<div class="person ${done?"done":""}">${CAL_NAME[u]}</div>`;
     });
-
     cell.innerHTML=html;
     grid.appendChild(cell);
   }
-
-  // trailing blanks to complete the last week row neatly
-  const totalCells = firstDow + daysInMonth;
-  const trailing = (7 - (totalCells % 7)) % 7;
-  for(let i=0;i<trailing;i++){
-    const empty=document.createElement("div");
-    empty.className="day empty";
-    grid.appendChild(empty);
-  }
 }
 
-/* ================= ACTIONS ================= */
+/* Actions */
 async function add(n){
   const log=await loadLog(user,selectedDate);
-  log.count += n;
-  undoStack.push(n);
-  await saveLog(user,selectedDate,log);
-  render();
+  log.count+=n; undoStack.push(n);
+  await saveLog(user,selectedDate,log); render();
 }
 async function undo(){
-  const n=undoStack.pop();
-  if(!n) return;
+  const n=undoStack.pop(); if(!n) return;
   const log=await loadLog(user,selectedDate);
-  log.count = Math.max(0, log.count - n);
-  await saveLog(user,selectedDate,log);
-  render();
+  log.count=Math.max(0,log.count-n);
+  await saveLog(user,selectedDate,log); render();
 }
-async function finish(){
-  const log=await loadLog(user,selectedDate);
-  if(log.count >= goalFor(selectedDate)){
-    log.done = true;
-    await saveLog(user,selectedDate,log);
-  }
-  render();
-}
-function logout(){
-  localStorage.removeItem("session");
-  location.reload();
-}
+async function finish(){ render(); }
+function logout(){ localStorage.removeItem("session"); location.reload(); }
 
-/* ================= AUTO LOGIN ================= */
+/* Auto login */
 if(user && lastPinDate===todayKey()) boot();
 </script>
 </body>
