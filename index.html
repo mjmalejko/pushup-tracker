@@ -244,6 +244,22 @@ const keyFromDate=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDat
 const goalFor=k=>{const d=dateFromKey(k);return (d.getMonth()+1)*d.getDate()};
 const docId=(u,d)=>`${u.toLowerCase()}_${d}`;
 
+function totalPossibleBetween(startKey, endKey) {
+  if (startKey > endKey) return 0;
+
+  let total = 0;
+  const d = dateFromKey(startKey);
+  const end = dateFromKey(endKey);
+
+  while (d <= end) {
+    total += (d.getMonth() + 1) * d.getDate();
+    d.setDate(d.getDate() + 1);
+  }
+  return total;
+}
+
+
+  
 /* State */
 let selectedDate=todayKey();
 let undoStack=[];
@@ -428,3 +444,4 @@ if(user && lastPinDate===todayKey()) boot();
 </script>
 </body>
 </html>
+
