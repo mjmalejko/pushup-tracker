@@ -147,6 +147,7 @@ button{
     <button data-user="Michael">Michael</button>
     <button data-user="Dad">Dad</button>
     <button data-user="Tom">Tom</button>
+    <button data-user="Matt">Matt</button>
   </div>
   <div class="small" style="margin-top:8px;">PIN required once per day</div>
 </div>
@@ -213,16 +214,17 @@ button{
 
 <script>
 const PIN="2026";
-const USERS=["Michael","Dad","Tom"];
+const USERS=["Michael","Dad","Tom","Matt"];
 const YEAR=2026;
 const YEAR_START="2026-01-01";
 const YEAR_END="2026-12-31";
 
 /* Calendar display abbreviations */
 const CAL_NAME = {
-  Michael: "MM",
-  Tom: "TM",
-  Dad: "Dad"
+  Michael: "MJM",
+  Tom: "TPM",
+  Dad: "DAD",
+  Matt: "MSM"
 };
 
 /* Firebase */
@@ -349,7 +351,7 @@ async function saveLog(u,d,log){
 
 /* Leaderboard */
 async function renderLeaderboard(){
-  const totals={Michael:0,Dad:0,Tom:0};
+  const totals={Michael:0,Dad:0,Tom:0,Matt:0};
   const snap=await db.collection("logs").where("year","==",YEAR).get();
   snap.forEach(doc=>{
     const r=doc.data();
@@ -444,4 +446,5 @@ if(user && lastPinDate===todayKey()) boot();
 </script>
 </body>
 </html>
+
 
