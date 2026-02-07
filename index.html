@@ -11,6 +11,12 @@
 <meta name="apple-mobile-web-app-title" content="Push-Up 2026" />
 <meta name="theme-color" content="#0b0f14" />
 
+<!-- Speed up standalone (Home Screen) cold starts -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="//www.gstatic.com">
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="dns-prefetch" href="//firestore.googleapis.com">
+
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 
@@ -225,10 +231,10 @@ const YEAR_END="2026-12-31";
 
 /* Calendar display abbreviations */
 const CAL_NAME = {
-  Michael: "MJM",
-  Tom: "TPM",
-  Dad: "DAD",
-  Matt: "MSM"
+  Michael: "MM",
+  Dad: "Dad",
+  Tom: "TM",
+  Matt: "MM2"
 };
 
 /* ================= FIREBASE ================= */
@@ -262,15 +268,43 @@ function totalPossibleBetween(startKey, endKey) {
   return total;
 }
 
-/* ================= PERFORMANCE CACHE =================
-   logsByDate["2026-01-15"]["Michael"] = 37
-*/
+function setStatus(msg){
+  const el = document.getElementById("status");
+  if (el) el.textContent = msg || "";
+}
+
+/* ================= PERFORMANCE CACHE ================= */
 let CACHE_READY = false;
 let logsByDate = {}; // { dateKey: { user: count } }
 
-async function warmCache(){
-  if (CACHE_READY) return;
-  const t0 = performance.now();
+const LS_CACHE_KEY = "pushup_cache_v1";
+
+function hydrateCacheFromLocalStorage(){
+  try{
+    const raw = localStorage.getItem(LS_CACHE_KEY);
+    if(!raw) return false;
+    const parsed = JSON.parse(raw);
+    if(parsed?.year !== YEAR || !parsed?.logsByDate) return false;
+    logsByDate = parsed.logsByDate;
+    CACHE_READY = true;
+    return true;
+  }catch{
+    return false;
+  }
+}
+
+function persistCacheToLocalStorage(){
+  try{
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify({
+      year: YEAR,
+      savedAt: Date.now(),
+      logsByDate
+    }));
+  }catch{}
+}
+
+async function warmCache(force=false){
+  if (CACHE_READY && !force) return;
 
   const snap = await db.collection("logs").where("year","==",YEAR).get();
   logsByDate = {};
@@ -282,14 +316,40 @@ async function warmCache(){
   });
 
   CACHE_READY = true;
-  const t1 = performance.now();
-  setStatus(`Loaded ${snap.size} logs in ${(t1 - t0).toFixed(0)}ms`);
+  persistCacheToLocalStorage();
 }
 
-function setStatus(msg){
-  const el = document.getElementById("status");
-  if (!el) return;
-  el.textContent = msg || "";
+/* ================= FAST LOCAL READS ================= */
+function getCount(u, d){
+  return Number(logsByDate?.[d]?.[u] ?? 0);
+}
+function setCount(u, d, count){
+  if (!logsByDate[d]) logsByDate[d] = {};
+  logsByDate[d][u] = Number(count || 0);
+}
+function totalsThrough(dateKey){
+  const totals = {};
+  USERS.forEach(u => totals[u] = 0);
+
+  for (const [d, perUser] of Object.entries(logsByDate)) {
+    if (d <= dateKey) {
+      USERS.forEach(u => totals[u] += Number(perUser?.[u] || 0));
+    }
+  }
+  return totals;
+}
+
+/* ================= FIRESTORE WRITE ================= */
+async function persistLog(u, d, count){
+  await db.collection("logs").doc(docId(u,d)).set({
+    user:u,
+    date:d,
+    year:YEAR,
+    count:Number(count||0),
+    goal:goalFor(d),
+    done:(Number(count||0) >= goalFor(d)),
+    updatedAt:Date.now()
+  }, { merge:true });
 }
 
 /* ================= STATE ================= */
@@ -342,7 +402,7 @@ monthSelect.onchange=()=>{
   if(calendarOpen) renderCalendarMonth();
 };
 
-/* ================= BOOT ================= */
+/* ================= BOOT (FAST HOME SCREEN) ================= */
 async function boot(){
   calendarMonth=dateFromKey(selectedDate).getMonth();
   monthSelect.value=calendarMonth;
@@ -350,51 +410,27 @@ async function boot(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
 
-  setStatus("Loading data…");
-  await warmCache();              // ✅ ONE query per session
+  // Paint instantly if we have cached data
+  const hadLocal = hydrateCacheFromLocalStorage();
   render();
-}
 
-/* ================= FAST LOCAL READS ================= */
-function getCount(u, d){
-  return Number(logsByDate?.[d]?.[u] ?? 0);
-}
-function setCount(u, d, count){
-  if (!logsByDate[d]) logsByDate[d] = {};
-  logsByDate[d][u] = Number(count || 0);
-}
-function totalsThrough(dateKey){
-  const totals = {};
-  USERS.forEach(u => totals[u] = 0);
-
-  for (const [d, perUser] of Object.entries(logsByDate)) {
-    if (d <= dateKey) {
-      USERS.forEach(u => totals[u] += Number(perUser?.[u] || 0));
-    }
+  // Then refresh from Firestore in the background (standalone is often cold)
+  setStatus(hadLocal ? "Syncing…" : "Loading…");
+  try{
+    await warmCache(true);
+    setStatus("");
+    render();
+  }catch(e){
+    console.error(e);
+    setStatus("Offline? Showing cached data.");
   }
-  return totals;
-}
-
-/* ================= FIRESTORE WRITE ================= */
-async function persistLog(u, d, count){
-  // single write; no read
-  await db.collection("logs").doc(docId(u,d)).set({
-    user:u,
-    date:d,
-    year:YEAR,
-    count:Number(count||0),
-    goal:goalFor(d),
-    done:(Number(count||0) >= goalFor(d)),
-    updatedAt:Date.now()
-  }, { merge:true });
 }
 
 /* ================= RENDER ================= */
-async function render(){
-  // clamp
-  if (selectedDate > todayKey()) selectedDate = todayKey();
-  datePicker.max = todayKey();
-  datePicker.value = selectedDate;
+function render(){
+  if(selectedDate>todayKey()) selectedDate=todayKey();
+  datePicker.max=todayKey();
+  datePicker.value=selectedDate;
 
   const goal = goalFor(selectedDate);
   const d = dateFromKey(selectedDate);
@@ -407,8 +443,7 @@ async function render(){
   document.getElementById("progress").innerText = `${count} / ${goal}`;
 
   renderLeaderboardFast();
-
-  if (calendarOpen) renderCalendarMonth();
+  if(calendarOpen) renderCalendarMonth();
 }
 
 /* ================= LEADERBOARD (FAST) ================= */
@@ -456,7 +491,6 @@ function renderCalendarMonth(){
   const startDow=first.getDay();
   const today = todayKey();
 
-  // leading blanks
   for(let i=0;i<startDow;i++){
     const e=document.createElement("div");
     e.className="day empty";
@@ -490,56 +524,54 @@ function renderCalendarMonth(){
 
 /* ================= ACTIONS ================= */
 async function add(n){
-  await warmCache();
-
-  // update local immediately (fast UI)
+  // Update local immediately
   const cur = getCount(user, selectedDate);
   const next = cur + n;
   setCount(user, selectedDate, next);
   undoStack.push(n);
+  persistCacheToLocalStorage();
   render();
 
-  // persist (network)
+  // Persist to Firestore
   try{
     await persistLog(user, selectedDate, next);
     setStatus("");
   }catch(e){
-    setStatus("Save failed (check connection).");
     console.error(e);
+    setStatus("Save failed (check connection).");
   }
 }
 
 async function undo(){
-  await warmCache();
-
   const n = undoStack.pop();
   if(!n) return;
 
   const cur = getCount(user, selectedDate);
   const next = Math.max(0, cur - n);
   setCount(user, selectedDate, next);
+  persistCacheToLocalStorage();
   render();
 
   try{
     await persistLog(user, selectedDate, next);
     setStatus("");
   }catch(e){
-    setStatus("Save failed (check connection).");
     console.error(e);
+    setStatus("Save failed (check connection).");
   }
 }
 
 async function finish(){
-  // "Done" just ensures the count is persisted and refreshes UI
-  await warmCache();
+  // Ensure persisted
   const c = getCount(user, selectedDate);
+  persistCacheToLocalStorage();
   render();
   try{
     await persistLog(user, selectedDate, c);
     setStatus("");
   }catch(e){
-    setStatus("Save failed (check connection).");
     console.error(e);
+    setStatus("Save failed (check connection).");
   }
 }
 
