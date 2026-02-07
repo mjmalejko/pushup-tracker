@@ -139,80 +139,84 @@ button{
 
 <div class="container">
 
-<!-- LOGIN -->
-<div class="card" id="login">
-  <h2>Enter PIN</h2>
-  <input id="pin" type="password" placeholder="Shared PIN" />
-  <div id="users" class="row hidden" style="margin-top:10px;">
-    <button data-user="Michael">Michael</button>
-    <button data-user="Dad">Dad</button>
-    <button data-user="Tom">Tom</button>
-    <button data-user="Matt">Matt</button>
-  </div>
-  <div class="small" style="margin-top:8px;">PIN required once per day</div>
-</div>
-
-<!-- APP -->
-<div id="app" class="hidden">
-
-<div class="card">
-  <div class="row space">
-    <div>
-      <h2 id="dateLabel"></h2>
-      <div id="goalLabel" class="small"></div>
+  <!-- LOGIN -->
+  <div class="card" id="login">
+    <h2>Enter PIN</h2>
+    <input id="pin" type="password" placeholder="Shared PIN" />
+    <div id="users" class="row hidden" style="margin-top:10px;">
+      <button data-user="Michael">Michael</button>
+      <button data-user="Dad">Dad</button>
+      <button data-user="Tom">Tom</button>
+      <button data-user="Matt">Matt</button>
     </div>
-    <input type="date" id="datePicker" />
-  </div>
-</div>
-
-<div class="card">
-  <div class="big" id="count">0</div>
-  <div id="progress" class="small" style="text-align:center;"></div>
-
-  <div class="grid" style="margin-top:12px;">
-    <button onclick="add(1)">+1</button>
-    <button onclick="add(5)">+5</button>
-    <button onclick="add(10)">+10</button>
-    <button onclick="add(20)">+20</button>
-    <button onclick="add(50)">+50</button>
+    <div class="small" style="margin-top:8px;">PIN required once per day</div>
   </div>
 
-  <div class="row" style="margin-top:12px;">
-    <button onclick="undo()">Undo</button>
-    <button onclick="finish()">Done ✅</button>
-  </div>
-</div>
+  <!-- APP -->
+  <div id="app" class="hidden">
 
-<div class="card">
-  <h3>Leaderboard – 2026 Totals & Max Projection</h3>
-  <div class="small">Completed so far + remaining required days</div>
-  <div id="leaderboard"></div>
-</div>
-
-<button onclick="toggleCalendar()">📅 View Calendar</button>
-
-<div id="calendarCard" class="card hidden">
-  <div class="row space">
-    <div>
-      <h3 style="margin:0;">2026 Calendar (Monthly)</h3>
-      <div class="small">Names turn green when daily goal is completed</div>
+    <div class="card">
+      <div class="row space">
+        <div>
+          <h2 id="dateLabel"></h2>
+          <div id="goalLabel" class="small"></div>
+        </div>
+        <input type="date" id="datePicker" />
+      </div>
     </div>
-    <select id="monthSelect"></select>
-  </div>
 
-  <div class="calendar-wrap">
-    <div class="cal-weekdays">
-      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+    <div class="card">
+      <div class="big" id="count">0</div>
+      <div id="progress" class="small" style="text-align:center;"></div>
+
+      <div class="grid" style="margin-top:12px;">
+        <button onclick="add(1)">+1</button>
+        <button onclick="add(5)">+5</button>
+        <button onclick="add(10)">+10</button>
+        <button onclick="add(20)">+20</button>
+        <button onclick="add(50)">+50</button>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button onclick="undo()">Undo</button>
+        <button onclick="finish()">Done ✅</button>
+      </div>
+
+      <div id="status" class="small" style="margin-top:10px; text-align:center;"></div>
     </div>
-    <div id="calendarGrid" class="calendar"></div>
-  </div>
-</div>
 
-<button onclick="logout()">Switch User</button>
-</div>
+    <div class="card">
+      <h3>Leaderboard – 2026 Totals & Max Projection</h3>
+      <div class="small">Completed so far + remaining required days</div>
+      <div id="leaderboard"><div class="small">Loading…</div></div>
+    </div>
+
+    <button onclick="toggleCalendar()">📅 View Calendar</button>
+
+    <div id="calendarCard" class="card hidden">
+      <div class="row space">
+        <div>
+          <h3 style="margin:0;">2026 Calendar (Monthly)</h3>
+          <div class="small">Names turn green when daily goal is completed</div>
+        </div>
+        <select id="monthSelect"></select>
+      </div>
+
+      <div class="calendar-wrap">
+        <div class="cal-weekdays">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+        <div id="calendarGrid" class="calendar"></div>
+      </div>
+    </div>
+
+    <button onclick="logout()">Switch User</button>
+
+  </div>
 </div>
 
 <script>
+/* ================= CONFIG ================= */
 const PIN="2026";
 const USERS=["Michael","Dad","Tom","Matt"];
 const YEAR=2026;
@@ -227,7 +231,7 @@ const CAL_NAME = {
   Matt: "MSM"
 };
 
-/* Firebase */
+/* ================= FIREBASE ================= */
 firebase.initializeApp({
   apiKey:"AIzaSyBrSIvUhk2zmNHiA_86QtlAvO0GleNfT9Q",
   authDomain:"pushup-challenge-edb93.firebaseapp.com",
@@ -238,7 +242,7 @@ firebase.initializeApp({
 });
 const db=firebase.firestore();
 
-/* Helpers */
+/* ================= HELPERS ================= */
 const pad2=n=>String(n).padStart(2,"0");
 const todayKey=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`};
 const dateFromKey=k=>new Date(k+"T00:00:00");
@@ -248,11 +252,9 @@ const docId=(u,d)=>`${u.toLowerCase()}_${d}`;
 
 function totalPossibleBetween(startKey, endKey) {
   if (startKey > endKey) return 0;
-
   let total = 0;
   const d = dateFromKey(startKey);
   const end = dateFromKey(endKey);
-
   while (d <= end) {
     total += (d.getMonth() + 1) * d.getDate();
     d.setDate(d.getDate() + 1);
@@ -260,9 +262,37 @@ function totalPossibleBetween(startKey, endKey) {
   return total;
 }
 
+/* ================= PERFORMANCE CACHE =================
+   logsByDate["2026-01-15"]["Michael"] = 37
+*/
+let CACHE_READY = false;
+let logsByDate = {}; // { dateKey: { user: count } }
 
-  
-/* State */
+async function warmCache(){
+  if (CACHE_READY) return;
+  const t0 = performance.now();
+
+  const snap = await db.collection("logs").where("year","==",YEAR).get();
+  logsByDate = {};
+  snap.forEach(doc=>{
+    const r = doc.data();
+    if (!r?.date || !r?.user) return;
+    if (!logsByDate[r.date]) logsByDate[r.date] = {};
+    logsByDate[r.date][r.user] = Number(r.count || 0);
+  });
+
+  CACHE_READY = true;
+  const t1 = performance.now();
+  setStatus(`Loaded ${snap.size} logs in ${(t1 - t0).toFixed(0)}ms`);
+}
+
+function setStatus(msg){
+  const el = document.getElementById("status");
+  if (!el) return;
+  el.textContent = msg || "";
+}
+
+/* ================= STATE ================= */
 let selectedDate=todayKey();
 let undoStack=[];
 let session=JSON.parse(localStorage.getItem("session")||"null");
@@ -271,32 +301,34 @@ let lastPinDate=session?.date||null;
 let calendarOpen=false;
 let calendarMonth=0;
 
-/* Login */
+/* ================= LOGIN ================= */
 const pin=document.getElementById("pin");
 const users=document.getElementById("users");
 pin.oninput=()=>users.classList.toggle("hidden",pin.value!==PIN);
 users.querySelectorAll("button").forEach(b=>{
-  b.onclick=()=>{
+  b.onclick=async ()=>{
     user=b.dataset.user;
     localStorage.setItem("session",JSON.stringify({user,date:todayKey()}));
-    boot();
+    await boot();
   };
 });
 
-/* Date picker */
+/* ================= DATE PICKER ================= */
 const datePicker=document.getElementById("datePicker");
 datePicker.min=YEAR_START;
 datePicker.max=todayKey();
 datePicker.onchange=()=>{
-  if(datePicker.value<YEAR_START||datePicker.value>todayKey()){
-    datePicker.value=selectedDate;return;
+  const v=datePicker.value;
+  if(v<YEAR_START || v>todayKey()){
+    datePicker.value=selectedDate;
+    return;
   }
-  selectedDate=datePicker.value;
+  selectedDate=v;
   undoStack=[];
   render();
 };
 
-/* Month selector */
+/* ================= MONTH SELECTOR ================= */
 const monthSelect=document.getElementById("monthSelect");
 ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 .forEach((m,i)=>{
@@ -310,141 +342,216 @@ monthSelect.onchange=()=>{
   if(calendarOpen) renderCalendarMonth();
 };
 
-/* Boot */
+/* ================= BOOT ================= */
 async function boot(){
   calendarMonth=dateFromKey(selectedDate).getMonth();
   monthSelect.value=calendarMonth;
+
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
+
+  setStatus("Loading data…");
+  await warmCache();              // ✅ ONE query per session
   render();
 }
 
-/* Render */
-async function render(){
-  if(selectedDate>todayKey()) selectedDate=todayKey();
-  datePicker.value=selectedDate;
+/* ================= FAST LOCAL READS ================= */
+function getCount(u, d){
+  return Number(logsByDate?.[d]?.[u] ?? 0);
+}
+function setCount(u, d, count){
+  if (!logsByDate[d]) logsByDate[d] = {};
+  logsByDate[d][u] = Number(count || 0);
+}
+function totalsThrough(dateKey){
+  const totals = {};
+  USERS.forEach(u => totals[u] = 0);
 
-  const log=await loadLog(user,selectedDate);
-  const goal=goalFor(selectedDate);
-  const d=dateFromKey(selectedDate);
-
-  document.getElementById("dateLabel").innerText=
-    d.toDateString()+(selectedDate===todayKey()?" (Today)":" (Past)");
-  document.getElementById("goalLabel").innerText=`Goal: ${goal}`;
-  document.getElementById("count").innerText=log.count;
-  document.getElementById("progress").innerText=`${log.count} / ${goal}`;
-
-  await renderLeaderboard();
-  if(calendarOpen) renderCalendarMonth();
+  for (const [d, perUser] of Object.entries(logsByDate)) {
+    if (d <= dateKey) {
+      USERS.forEach(u => totals[u] += Number(perUser?.[u] || 0));
+    }
+  }
+  return totals;
 }
 
-/* Firestore helpers */
-async function loadLog(u,d){
-  const s=await db.collection("logs").doc(docId(u,d)).get();
-  return s.exists?s.data():{count:0,done:false};
-}
-async function saveLog(u,d,log){
+/* ================= FIRESTORE WRITE ================= */
+async function persistLog(u, d, count){
+  // single write; no read
   await db.collection("logs").doc(docId(u,d)).set({
-    user:u,date:d,year:YEAR,count:log.count,goal:goalFor(d),updatedAt:Date.now()
-  },{merge:true});
+    user:u,
+    date:d,
+    year:YEAR,
+    count:Number(count||0),
+    goal:goalFor(d),
+    done:(Number(count||0) >= goalFor(d)),
+    updatedAt:Date.now()
+  }, { merge:true });
 }
 
-/* Leaderboard */
-async function renderLeaderboard(){
-  const totals={Michael:0,Dad:0,Tom:0,Matt:0};
-  const snap=await db.collection("logs").where("year","==",YEAR).get();
-  snap.forEach(doc=>{
-    const r=doc.data();
-    if(r.date<=selectedDate) totals[r.user]+=r.count||0;
-  });
+/* ================= RENDER ================= */
+async function render(){
+  // clamp
+  if (selectedDate > todayKey()) selectedDate = todayKey();
+  datePicker.max = todayKey();
+  datePicker.value = selectedDate;
 
-  const next=new Date(selectedDate+"T00:00:00");next.setDate(next.getDate()+1);
-  const remaining = next<=new Date(YEAR_END) ? totalPossibleBetween(keyFromDate(next),YEAR_END) : 0;
-  const full = totalPossibleBetween(YEAR_START,YEAR_END);
+  const goal = goalFor(selectedDate);
+  const d = dateFromKey(selectedDate);
+  const count = getCount(user, selectedDate);
 
-  const rows=USERS.map(u=>{
-    return {u,actual:totals[u],projected:totals[u]+remaining};
+  document.getElementById("dateLabel").innerText =
+    d.toDateString() + (selectedDate===todayKey() ? " (Today)" : " (Past)");
+  document.getElementById("goalLabel").innerText = `Goal: ${goal}`;
+  document.getElementById("count").innerText = count;
+  document.getElementById("progress").innerText = `${count} / ${goal}`;
+
+  renderLeaderboardFast();
+
+  if (calendarOpen) renderCalendarMonth();
+}
+
+/* ================= LEADERBOARD (FAST) ================= */
+function renderLeaderboardFast(){
+  const completed = totalsThrough(selectedDate);
+
+  const next = new Date(selectedDate+"T00:00:00");
+  next.setDate(next.getDate()+1);
+  const nextKey = keyFromDate(next);
+
+  const remaining = (nextKey <= YEAR_END) ? totalPossibleBetween(nextKey, YEAR_END) : 0;
+  const full = totalPossibleBetween(YEAR_START, YEAR_END);
+
+  const rows = USERS.map(u=>{
+    const actual = completed[u] || 0;
+    return {u, actual, projected: actual + remaining};
   }).sort((a,b)=>b.actual-a.actual);
 
   const lb=document.getElementById("leaderboard");
   lb.innerHTML="";
   rows.forEach((r,i)=>{
-    const d=document.createElement("div");
-    d.className="lb";
-    d.innerHTML=`
-      <div class="lb-top"><span>${i+1}. ${r.u}</span><span>${r.actual}</span></div>
-      <div class="lb-sub">Projected: ${r.projected} / ${full}</div>
+    const div=document.createElement("div");
+    div.className="lb";
+    div.innerHTML=`
+      <div class="lb-top"><span>${i+1}. ${r.u}</span><span>${r.actual.toLocaleString()}</span></div>
+      <div class="lb-sub">Projected: ${r.projected.toLocaleString()} / ${full.toLocaleString()}</div>
     `;
-    lb.appendChild(d);
+    lb.appendChild(div);
   });
 }
 
-/* Calendar */
+/* ================= CALENDAR (FAST) ================= */
 function toggleCalendar(){
-  calendarOpen=!calendarOpen;
-  document.getElementById("calendarCard").classList.toggle("hidden",!calendarOpen);
-  if(calendarOpen) renderCalendarMonth();
+  calendarOpen = !calendarOpen;
+  document.getElementById("calendarCard").classList.toggle("hidden", !calendarOpen);
+  if (calendarOpen) renderCalendarMonth();
 }
 
-async function renderCalendarMonth(){
+function renderCalendarMonth(){
   const grid=document.getElementById("calendarGrid");
   grid.innerHTML="";
-  const snap=await db.collection("logs").where("year","==",YEAR).get();
-  const logs={};
-  snap.forEach(d=>{
-    const r=d.data();
-    if(!logs[r.date]) logs[r.date]={};
-    logs[r.date][r.user]=r.count||0;
-  });
 
   const first=new Date(YEAR,calendarMonth,1);
   const last=new Date(YEAR,calendarMonth+1,0);
   const startDow=first.getDay();
+  const today = todayKey();
 
+  // leading blanks
   for(let i=0;i<startDow;i++){
     const e=document.createElement("div");
     e.className="day empty";
     grid.appendChild(e);
   }
 
-  for(let day=1;day<=last.getDate();day++){
+  for(let day=1; day<=last.getDate(); day++){
     const d=new Date(YEAR,calendarMonth,day);
     const key=keyFromDate(d);
+
     const cell=document.createElement("div");
-    if(key>todayKey()){ cell.className="day empty"; grid.appendChild(cell); continue; }
+    if(key>today){
+      cell.className="day empty";
+      grid.appendChild(cell);
+      continue;
+    }
 
     const goal=goalFor(key);
-    cell.className="day"+(key===todayKey()?" today":"");
+    cell.className="day" + (key===today ? " today" : "");
 
     let html=`<div class="day-num"><span>${day}</span><span class="small">${goal}</span></div>`;
     USERS.forEach(u=>{
-      const done=(logs[key]?.[u]||0)>=goal;
-      html+=`<div class="person ${done?"done":""}">${CAL_NAME[u]}</div>`;
+      const done = getCount(u, key) >= goal;
+      html += `<div class="person ${done ? "done" : ""}">${CAL_NAME[u] || u}</div>`;
     });
-    cell.innerHTML=html;
+
+    cell.innerHTML = html;
     grid.appendChild(cell);
   }
 }
 
-/* Actions */
+/* ================= ACTIONS ================= */
 async function add(n){
-  const log=await loadLog(user,selectedDate);
-  log.count+=n; undoStack.push(n);
-  await saveLog(user,selectedDate,log); render();
-}
-async function undo(){
-  const n=undoStack.pop(); if(!n) return;
-  const log=await loadLog(user,selectedDate);
-  log.count=Math.max(0,log.count-n);
-  await saveLog(user,selectedDate,log); render();
-}
-async function finish(){ render(); }
-function logout(){ localStorage.removeItem("session"); location.reload(); }
+  await warmCache();
 
-/* Auto login */
-if(user && lastPinDate===todayKey()) boot();
+  // update local immediately (fast UI)
+  const cur = getCount(user, selectedDate);
+  const next = cur + n;
+  setCount(user, selectedDate, next);
+  undoStack.push(n);
+  render();
+
+  // persist (network)
+  try{
+    await persistLog(user, selectedDate, next);
+    setStatus("");
+  }catch(e){
+    setStatus("Save failed (check connection).");
+    console.error(e);
+  }
+}
+
+async function undo(){
+  await warmCache();
+
+  const n = undoStack.pop();
+  if(!n) return;
+
+  const cur = getCount(user, selectedDate);
+  const next = Math.max(0, cur - n);
+  setCount(user, selectedDate, next);
+  render();
+
+  try{
+    await persistLog(user, selectedDate, next);
+    setStatus("");
+  }catch(e){
+    setStatus("Save failed (check connection).");
+    console.error(e);
+  }
+}
+
+async function finish(){
+  // "Done" just ensures the count is persisted and refreshes UI
+  await warmCache();
+  const c = getCount(user, selectedDate);
+  render();
+  try{
+    await persistLog(user, selectedDate, c);
+    setStatus("");
+  }catch(e){
+    setStatus("Save failed (check connection).");
+    console.error(e);
+  }
+}
+
+function logout(){
+  localStorage.removeItem("session");
+  location.reload();
+}
+
+/* ================= AUTO LOGIN ================= */
+if(user && lastPinDate===todayKey()){
+  boot();
+}
 </script>
 </body>
 </html>
-
-
