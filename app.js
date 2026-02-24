@@ -1,0 +1,362 @@
+/* ================= CONFIG ================= */
+const PIN="2026";
+const USERS=["Michael","Dad","Tom","Matt"];
+const YEAR=2026;
+const YEAR_START="2026-01-01";
+const YEAR_END="2026-12-31";
+
+/* Calendar display abbreviations */
+const CAL_NAME = {
+  Michael: "MM",
+  Dad: "Dad",
+  Tom: "TM",
+  Matt: "MM2"
+};
+
+/* ================= FIREBASE ================= */
+firebase.initializeApp({
+  apiKey:"AIzaSyBrSIvUhk2zmNHiA_86QtlAvO0GleNfT9Q",
+  authDomain:"pushup-challenge-edb93.firebaseapp.com",
+  projectId:"pushup-challenge-edb93",
+  storageBucket:"pushup-challenge-edb93.appspot.com",
+  messagingSenderId:"568991407340",
+  appId:"1:568991407340:web:bf9ff4bc9d480d956599c9"
+});
+const db=firebase.firestore();
+
+/* ================= HELPERS ================= */
+const pad2=n=>String(n).padStart(2,"0");
+const todayKey=()=>{const d=new Date();return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`};
+const dateFromKey=k=>new Date(k+"T00:00:00");
+const keyFromDate=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const goalFor=k=>{const d=dateFromKey(k);return (d.getMonth()+1)*d.getDate()};
+const docId=(u,d)=>`${u.toLowerCase()}_${d}`;
+
+function totalPossibleBetween(startKey, endKey) {
+  if (startKey > endKey) return 0;
+  let total = 0;
+  const d = dateFromKey(startKey);
+  const end = dateFromKey(endKey);
+  while (d <= end) {
+    total += (d.getMonth() + 1) * d.getDate();
+    d.setDate(d.getDate() + 1);
+  }
+  return total;
+}
+
+function setStatus(msg){
+  const el = document.getElementById("status");
+  if (el) el.textContent = msg || "";
+}
+
+/* ================= PERFORMANCE CACHE ================= */
+let CACHE_READY = false;
+let logsByDate = {}; // { dateKey: { user: count } }
+
+const LS_CACHE_KEY = "pushup_cache_v1";
+
+function hydrateCacheFromLocalStorage(){
+  try{
+    const raw = localStorage.getItem(LS_CACHE_KEY);
+    if(!raw) return false;
+    const parsed = JSON.parse(raw);
+    if(parsed?.year !== YEAR || !parsed?.logsByDate) return false;
+    logsByDate = parsed.logsByDate;
+    CACHE_READY = true;
+    return true;
+  }catch{
+    return false;
+  }
+}
+
+function persistCacheToLocalStorage(){
+  try{
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify({
+      year: YEAR,
+      savedAt: Date.now(),
+      logsByDate
+    }));
+  }catch{}
+}
+
+async function warmCache(force=false){
+  if (CACHE_READY && !force) return;
+
+  const snap = await db.collection("logs").where("year","==",YEAR).get();
+  logsByDate = {};
+  snap.forEach(doc=>{
+    const r = doc.data();
+    if (!r?.date || !r?.user) return;
+    if (!logsByDate[r.date]) logsByDate[r.date] = {};
+    logsByDate[r.date][r.user] = Number(r.count || 0);
+  });
+
+  CACHE_READY = true;
+  persistCacheToLocalStorage();
+}
+
+/* ================= FAST LOCAL READS ================= */
+function getCount(u, d){
+  return Number(logsByDate?.[d]?.[u] ?? 0);
+}
+function setCount(u, d, count){
+  if (!logsByDate[d]) logsByDate[d] = {};
+  logsByDate[d][u] = Number(count || 0);
+}
+function totalsThrough(dateKey){
+  const totals = {};
+  USERS.forEach(u => totals[u] = 0);
+
+  for (const [d, perUser] of Object.entries(logsByDate)) {
+    if (d <= dateKey) {
+      USERS.forEach(u => totals[u] += Number(perUser?.[u] || 0));
+    }
+  }
+  return totals;
+}
+
+/* ================= FIRESTORE WRITE ================= */
+async function persistLog(u, d, count){
+  await db.collection("logs").doc(docId(u,d)).set({
+    user:u,
+    date:d,
+    year:YEAR,
+    count:Number(count||0),
+    goal:goalFor(d),
+    done:(Number(count||0) >= goalFor(d)),
+    updatedAt:Date.now()
+  }, { merge:true });
+}
+
+/* ================= STATE ================= */
+let selectedDate=todayKey();
+let undoStack=[];
+let session=JSON.parse(localStorage.getItem("session")||"null");
+let user=session?.user||null;
+let lastPinDate=session?.date||null;
+let calendarOpen=false;
+let calendarMonth=0;
+
+/* ================= LOGIN ================= */
+const pin=document.getElementById("pin");
+const users=document.getElementById("users");
+pin.oninput=()=>users.classList.toggle("hidden",pin.value!==PIN);
+users.querySelectorAll("button").forEach(b=>{
+  b.onclick=async ()=>{
+    user=b.dataset.user;
+    localStorage.setItem("session",JSON.stringify({user,date:todayKey()}));
+    await boot();
+  };
+});
+
+/* ================= DATE PICKER ================= */
+const datePicker=document.getElementById("datePicker");
+datePicker.min=YEAR_START;
+datePicker.max=todayKey();
+datePicker.onchange=()=>{
+  const v=datePicker.value;
+  if(v<YEAR_START || v>todayKey()){
+    datePicker.value=selectedDate;
+    return;
+  }
+  selectedDate=v;
+  undoStack=[];
+  render();
+};
+
+/* ================= MONTH SELECTOR ================= */
+const monthSelect=document.getElementById("monthSelect");
+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+.forEach((m,i)=>{
+  const o=document.createElement("option");
+  o.value=i;
+  o.textContent=`${m} ${YEAR}`;
+  monthSelect.appendChild(o);
+});
+monthSelect.onchange=()=>{
+  calendarMonth=parseInt(monthSelect.value,10);
+  if(calendarOpen) renderCalendarMonth();
+};
+
+/* ================= BOOT (FAST HOME SCREEN) ================= */
+async function boot(){
+  calendarMonth=dateFromKey(selectedDate).getMonth();
+  monthSelect.value=calendarMonth;
+
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+
+  // Paint instantly if we have cached data
+  const hadLocal = hydrateCacheFromLocalStorage();
+  render();
+
+  // Then refresh from Firestore in the background (standalone is often cold)
+  setStatus(hadLocal ? "Syncing…" : "Loading…");
+  try{
+    await warmCache(true);
+    setStatus("");
+    render();
+  }catch(e){
+    console.error(e);
+    setStatus("Offline? Showing cached data.");
+  }
+}
+
+/* ================= RENDER ================= */
+function render(){
+  if(selectedDate>todayKey()) selectedDate=todayKey();
+  datePicker.max=todayKey();
+  datePicker.value=selectedDate;
+
+  const goal = goalFor(selectedDate);
+  const d = dateFromKey(selectedDate);
+  const count = getCount(user, selectedDate);
+
+  document.getElementById("dateLabel").innerText =
+    d.toDateString() + (selectedDate===todayKey() ? " (Today)" : " (Past)");
+  document.getElementById("goalLabel").innerText = `Goal: ${goal}`;
+  document.getElementById("count").innerText = count;
+  document.getElementById("progress").innerText = `${count} / ${goal}`;
+
+  renderLeaderboardFast();
+  if(calendarOpen) renderCalendarMonth();
+}
+
+/* ================= LEADERBOARD (FAST) ================= */
+function renderLeaderboardFast(){
+  const completed = totalsThrough(selectedDate);
+
+  const next = new Date(selectedDate+"T00:00:00");
+  next.setDate(next.getDate()+1);
+  const nextKey = keyFromDate(next);
+
+  const remaining = (nextKey <= YEAR_END) ? totalPossibleBetween(nextKey, YEAR_END) : 0;
+  const full = totalPossibleBetween(YEAR_START, YEAR_END);
+
+  const rows = USERS.map(u=>{
+    const actual = completed[u] || 0;
+    return {u, actual, projected: actual + remaining};
+  }).sort((a,b)=>b.actual-a.actual);
+
+  const lb=document.getElementById("leaderboard");
+  lb.innerHTML="";
+  rows.forEach((r,i)=>{
+    const div=document.createElement("div");
+    div.className="lb";
+    div.innerHTML=`
+      <div class="lb-top"><span>${i+1}. ${r.u}</span><span>${r.actual.toLocaleString()}</span></div>
+      <div class="lb-sub">Projected: ${r.projected.toLocaleString()} / ${full.toLocaleString()}</div>
+    `;
+    lb.appendChild(div);
+  });
+}
+
+/* ================= CALENDAR (FAST) ================= */
+function toggleCalendar(){
+  calendarOpen = !calendarOpen;
+  document.getElementById("calendarCard").classList.toggle("hidden", !calendarOpen);
+  if (calendarOpen) renderCalendarMonth();
+}
+
+function renderCalendarMonth(){
+  const grid=document.getElementById("calendarGrid");
+  grid.innerHTML="";
+
+  const first=new Date(YEAR,calendarMonth,1);
+  const last=new Date(YEAR,calendarMonth+1,0);
+  const startDow=first.getDay();
+  const today = todayKey();
+
+  for(let i=0;i<startDow;i++){
+    const e=document.createElement("div");
+    e.className="day empty";
+    grid.appendChild(e);
+  }
+
+  for(let day=1; day<=last.getDate(); day++){
+    const d=new Date(YEAR,calendarMonth,day);
+    const key=keyFromDate(d);
+
+    const cell=document.createElement("div");
+    if(key>today){
+      cell.className="day empty";
+      grid.appendChild(cell);
+      continue;
+    }
+
+    const goal=goalFor(key);
+    cell.className="day" + (key===today ? " today" : "");
+
+    let html=`<div class="day-num"><span>${day}</span><span class="small">${goal}</span></div>`;
+    USERS.forEach(u=>{
+      const done = getCount(u, key) >= goal;
+      html += `<div class="person ${done ? "done" : ""}">${CAL_NAME[u] || u}</div>`;
+    });
+
+    cell.innerHTML = html;
+    grid.appendChild(cell);
+  }
+}
+
+/* ================= ACTIONS ================= */
+async function add(n){
+  // Update local immediately
+  const cur = getCount(user, selectedDate);
+  const next = cur + n;
+  setCount(user, selectedDate, next);
+  undoStack.push(n);
+  persistCacheToLocalStorage();
+  render();
+
+  // Persist to Firestore
+  try{
+    await persistLog(user, selectedDate, next);
+    setStatus("");
+  }catch(e){
+    console.error(e);
+    setStatus("Save failed (check connection).");
+  }
+}
+
+async function undo(){
+  const n = undoStack.pop();
+  if(!n) return;
+
+  const cur = getCount(user, selectedDate);
+  const next = Math.max(0, cur - n);
+  setCount(user, selectedDate, next);
+  persistCacheToLocalStorage();
+  render();
+
+  try{
+    await persistLog(user, selectedDate, next);
+    setStatus("");
+  }catch(e){
+    console.error(e);
+    setStatus("Save failed (check connection).");
+  }
+}
+
+async function finish(){
+  // Ensure persisted
+  const c = getCount(user, selectedDate);
+  persistCacheToLocalStorage();
+  render();
+  try{
+    await persistLog(user, selectedDate, c);
+    setStatus("");
+  }catch(e){
+    console.error(e);
+    setStatus("Save failed (check connection).");
+  }
+}
+
+function logout(){
+  localStorage.removeItem("session");
+  location.reload();
+}
+
+/* ================= AUTO LOGIN ================= */
+if(user && lastPinDate===todayKey()){
+  boot();
+}
